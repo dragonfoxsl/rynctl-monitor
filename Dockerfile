@@ -1,3 +1,12 @@
+# Stage 1: Build frontend with Vite + Preact
+FROM node:20-slim AS frontend
+WORKDIR /build
+COPY frontend/package.json frontend/package-lock.json* ./
+RUN npm ci --legacy-peer-deps
+COPY frontend/ .
+RUN npm run build
+
+# Stage 2: Production image
 FROM python:3.12-slim
 
 RUN apt-get update && \
@@ -9,7 +18,13 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+COPY backend/ backend/
+COPY templates/ templates/
+COPY static/ static/
+COPY run.py .
+
+# Copy built frontend assets from stage 1
+COPY --from=frontend /static/dist static/dist
 
 RUN mkdir -p /data/logs
 

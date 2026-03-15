@@ -1,13 +1,18 @@
 """
 APScheduler-based cron scheduling for rsync jobs.
-Manages adding, removing, and loading scheduled jobs.
+Also manages periodic maintenance tasks (session cleanup).
 """
+
+import logging
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
+from apscheduler.triggers.interval import IntervalTrigger
 
-from backend.database import get_db
+from backend.database import cleanup_expired_sessions, get_db
 from backend.rsync import run_rsync_job
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Global scheduler instance
@@ -20,7 +25,6 @@ def schedule_job(job_id: int, cron_expr: str):
     """Add or replace a cron-triggered rsync job on the scheduler."""
     job_tag = f"rsync_job_{job_id}"
 
-    # Remove existing schedule if any
     try:
         scheduler.remove_job(job_tag)
     except Exception:
@@ -40,12 +44,14 @@ def schedule_job(job_id: int, cron_expr: str):
     scheduler.add_job(
         run_rsync_job, trigger, args=[job_id], id=job_tag, replace_existing=True
     )
+    logger.info("Scheduled job %d with cron: %s", job_id, cron_expr)
 
 
 def unschedule_job(job_id: int):
     """Remove a job's cron schedule."""
     try:
         scheduler.remove_job(f"rsync_job_{job_id}")
+        logger.info("Unscheduled job %d", job_id)
     except Exception:
         pass
 
@@ -59,5 +65,15 @@ def load_schedules():
         ).fetchall()
         for row in rows:
             schedule_job(row["id"], row["schedule_cron"])
+        logger.info("Loaded %d scheduled jobs", len(rows))
     finally:
         conn.close()
+
+    # Periodic session cleanup (every hour)
+    scheduler.add_job(
+        cleanup_expired_sessions,
+        IntervalTrigger(hours=1),
+        id="session_cleanup",
+        replace_existing=True,
+    )
+    logger.info("Registered hourly session cleanup task")

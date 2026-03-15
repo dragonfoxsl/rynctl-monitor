@@ -1,5 +1,6 @@
 """
 Job CRUD routes — list, create, update, delete, run, preview, and per-job runs.
+Includes tags support and retry configuration.
 """
 
 import threading
@@ -13,10 +14,17 @@ from backend.security import require_auth, require_role
 
 router = APIRouter(prefix="/api/jobs", tags=["jobs"])
 
+# Fields that can be set/updated on a job
+_UPDATABLE = [
+    "name", "source", "destination", "remote_host", "ssh_port", "ssh_key",
+    "flags", "exclude_patterns", "bandwidth_limit", "custom_flags", "tags",
+    "schedule_cron", "schedule_enabled", "retry_max", "retry_delay",
+]
+
 
 @router.get("")
-async def list_jobs(request: Request):
-    """List all jobs with last status, run count, and total data transferred."""
+async def list_jobs(request: Request, tag: str = None):
+    """List all jobs. Optionally filter by tag."""
     require_auth(request)
     conn = get_db()
     try:
@@ -27,7 +35,32 @@ async def list_jobs(request: Request):
                    (SELECT COALESCE(SUM(bytes_transferred), 0) FROM job_runs WHERE job_id = j.id) AS total_data
             FROM jobs j ORDER BY j.id DESC
         """).fetchall()
-        return [dict(r) for r in rows]
+        result = [dict(r) for r in rows]
+
+        # Filter by tag if specified
+        if tag:
+            tag = tag.lower().strip()
+            result = [j for j in result if tag in (j.get("tags") or "").lower()]
+
+        return result
+    finally:
+        conn.close()
+
+
+@router.get("/tags")
+async def list_tags(request: Request):
+    """Return all unique tags used across jobs."""
+    require_auth(request)
+    conn = get_db()
+    try:
+        rows = conn.execute("SELECT tags FROM jobs WHERE tags != ''").fetchall()
+        all_tags = set()
+        for r in rows:
+            for t in r["tags"].split(","):
+                t = t.strip()
+                if t:
+                    all_tags.add(t)
+        return sorted(all_tags)
     finally:
         conn.close()
 
@@ -38,7 +71,6 @@ async def create_job(request: Request):
     user = require_role(request, "admin", "rsync")
     body = await request.json()
 
-    # Validate required fields
     for f in ["name", "source", "destination"]:
         if not body.get(f):
             raise HTTPException(status_code=400, detail=f"'{f}' is required")
@@ -47,22 +79,23 @@ async def create_job(request: Request):
     try:
         cur = conn.execute(
             """INSERT INTO jobs (name, source, destination, remote_host, ssh_port, ssh_key,
-                   flags, exclude_patterns, bandwidth_limit, custom_flags,
-                   schedule_cron, schedule_enabled, created_by)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                   flags, exclude_patterns, bandwidth_limit, custom_flags, tags,
+                   schedule_cron, schedule_enabled, retry_max, retry_delay, created_by)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (
                 body["name"], body["source"], body["destination"],
                 body.get("remote_host", ""), body.get("ssh_port", ""),
                 body.get("ssh_key", ""), body.get("flags", "-avh"),
                 body.get("exclude_patterns", ""), body.get("bandwidth_limit", ""),
-                body.get("custom_flags", ""), body.get("schedule_cron", ""),
-                body.get("schedule_enabled", 0), user["id"],
+                body.get("custom_flags", ""), body.get("tags", ""),
+                body.get("schedule_cron", ""), body.get("schedule_enabled", 0),
+                body.get("retry_max", 0), body.get("retry_delay", 30),
+                user["id"],
             ),
         )
         conn.commit()
         job_id = cur.lastrowid
 
-        # Auto-schedule if enabled
         if body.get("schedule_enabled") and body.get("schedule_cron"):
             schedule_job(job_id, body["schedule_cron"])
 
@@ -99,14 +132,9 @@ async def update_job(job_id: int, request: Request):
         if not existing:
             raise HTTPException(status_code=404, detail="Job not found")
 
-        updatable = [
-            "name", "source", "destination", "remote_host", "ssh_port", "ssh_key",
-            "flags", "exclude_patterns", "bandwidth_limit", "custom_flags",
-            "schedule_cron", "schedule_enabled",
-        ]
         sets = []
         vals = []
-        for key in updatable:
+        for key in _UPDATABLE:
             if key in body:
                 sets.append(f"{key} = ?")
                 vals.append(body[key])
@@ -117,7 +145,6 @@ async def update_job(job_id: int, request: Request):
             conn.execute(f"UPDATE jobs SET {', '.join(sets)} WHERE id = ?", vals)
             conn.commit()
 
-        # Reschedule based on new values
         sched_enabled = body.get("schedule_enabled", existing["schedule_enabled"])
         sched_cron = body.get("schedule_cron", existing["schedule_cron"])
 
@@ -134,10 +161,10 @@ async def update_job(job_id: int, request: Request):
 
 @router.delete("/{job_id}")
 async def delete_job(job_id: int, request: Request):
-    require_role(request, "admin", "rsync")
+    user = require_role(request, "admin", "rsync")
     conn = get_db()
     try:
-        existing = conn.execute("SELECT id FROM jobs WHERE id = ?", (job_id,)).fetchone()
+        existing = conn.execute("SELECT id, name FROM jobs WHERE id = ?", (job_id,)).fetchone()
         if not existing:
             raise HTTPException(status_code=404, detail="Job not found")
         conn.execute("DELETE FROM jobs WHERE id = ?", (job_id,))
@@ -146,16 +173,17 @@ async def delete_job(job_id: int, request: Request):
         conn.close()
 
     unschedule_job(job_id)
+    log_audit(user, "job_delete", "job", str(job_id), f"Deleted job '{existing['name']}'")
     return {"ok": True}
 
 
 @router.post("/{job_id}/run")
 async def run_job(job_id: int, request: Request):
     """Trigger an immediate rsync run in a background thread."""
-    require_role(request, "admin", "rsync")
+    user = require_role(request, "admin", "rsync")
     conn = get_db()
     try:
-        job = conn.execute("SELECT id FROM jobs WHERE id = ?", (job_id,)).fetchone()
+        job = conn.execute("SELECT id, name FROM jobs WHERE id = ?", (job_id,)).fetchone()
         if not job:
             raise HTTPException(status_code=404, detail="Job not found")
     finally:
@@ -163,6 +191,7 @@ async def run_job(job_id: int, request: Request):
 
     t = threading.Thread(target=run_rsync_job, args=(job_id,), daemon=True)
     t.start()
+    log_audit(user, "job_run", "job", str(job_id), f"Manual run of '{job['name']}'")
     return {"ok": True, "message": "Job started"}
 
 

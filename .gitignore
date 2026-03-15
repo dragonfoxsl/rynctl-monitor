@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+*.pyo
+data/rynctl.db
+data/logs/*.log
+.env
+*.egg-info/
+.venv/
+venv/
+
+# Frontend
+frontend/node_modules/
+static/dist/
+
+.claude/

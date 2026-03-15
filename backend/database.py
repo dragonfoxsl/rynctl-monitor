@@ -3,11 +3,14 @@ Database initialization and connection helpers.
 Uses SQLite with WAL journal mode for concurrent reads.
 """
 
+import logging
 import os
 import sqlite3
 from pathlib import Path
 
 from backend.security import hash_password
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Paths — /data in Docker, ./data locally
@@ -65,8 +68,11 @@ def init_db():
                 exclude_patterns TEXT DEFAULT '',
                 bandwidth_limit TEXT DEFAULT '',
                 custom_flags TEXT DEFAULT '',
+                tags TEXT DEFAULT '',
                 schedule_cron TEXT DEFAULT '',
                 schedule_enabled INTEGER DEFAULT 0,
+                retry_max INTEGER DEFAULT 0,
+                retry_delay INTEGER DEFAULT 30,
                 created_by INTEGER REFERENCES users(id),
                 created_at TEXT DEFAULT (datetime('now')),
                 updated_at TEXT DEFAULT (datetime('now'))
@@ -75,6 +81,7 @@ def init_db():
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 job_id INTEGER NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
                 status TEXT DEFAULT 'running',
+                attempt INTEGER DEFAULT 1,
                 started_at TEXT DEFAULT (datetime('now')),
                 finished_at TEXT,
                 exit_code INTEGER,
@@ -96,11 +103,12 @@ def init_db():
             );
         """)
 
-        # Add csrf_token column to existing sessions table if missing
-        cols = [r["name"] for r in conn.execute("PRAGMA table_info(sessions)").fetchall()]
-        if "csrf_token" not in cols:
-            conn.execute("ALTER TABLE sessions ADD COLUMN csrf_token TEXT DEFAULT ''")
-            conn.commit()
+        # Schema migrations — add columns if missing on existing databases
+        _migrate_column(conn, "sessions", "csrf_token", "TEXT DEFAULT ''")
+        _migrate_column(conn, "jobs", "tags", "TEXT DEFAULT ''")
+        _migrate_column(conn, "jobs", "retry_max", "INTEGER DEFAULT 0")
+        _migrate_column(conn, "jobs", "retry_delay", "INTEGER DEFAULT 30")
+        _migrate_column(conn, "job_runs", "attempt", "INTEGER DEFAULT 1")
 
         # Seed default admin (admin/admin) when DB is empty
         row = conn.execute("SELECT COUNT(*) AS c FROM users").fetchone()
@@ -111,8 +119,20 @@ def init_db():
                 ("admin", pw_hash, "admin"),
             )
             conn.commit()
+            logger.info("Seeded default admin user")
     finally:
         conn.close()
+
+    logger.info("Database initialized at %s", DB_PATH)
+
+
+def _migrate_column(conn, table: str, column: str, col_type: str):
+    """Add a column to a table if it doesn't already exist."""
+    cols = [r["name"] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()]
+    if column not in cols:
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}")
+        conn.commit()
+        logger.info("Migrated: added %s.%s", table, column)
 
 
 def log_audit(user: dict | None, action: str, target_type: str = "", target_id: str = "", details: str = ""):
@@ -134,7 +154,9 @@ def cleanup_expired_sessions():
     """Delete all expired sessions."""
     conn = get_db()
     try:
-        conn.execute("DELETE FROM sessions WHERE expires_at < datetime('now')")
+        cur = conn.execute("DELETE FROM sessions WHERE expires_at < datetime('now')")
         conn.commit()
+        if cur.rowcount > 0:
+            logger.info("Cleaned up %d expired sessions", cur.rowcount)
     finally:
         conn.close()

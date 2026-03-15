@@ -971,6 +971,19 @@ document.addEventListener('click', async (e) => {
   }
 
   switch (action) {
+    case 'confirm-ok':
+      if (state.confirmDialog?.onConfirm) {
+        state.confirmDialog.onConfirm();
+      }
+      state.confirmDialog = null;
+      renderConfirmDialog();
+      break;
+
+    case 'confirm-cancel':
+      state.confirmDialog = null;
+      renderConfirmDialog();
+      break;
+
     case 'logout':
       try { await api('POST', '/api/auth/logout'); } catch (_) {}
       state.user = null;
@@ -995,13 +1008,21 @@ document.addEventListener('click', async (e) => {
       const fd = getJobFormData();
       if (!fd.name || !fd.name.trim()) { showToast('Job name is required', 'error'); document.getElementById('jf-name')?.focus(); break; }
       if (!fd.source || !fd.source.trim()) { showToast('Source path is required', 'error'); document.getElementById('jf-source')?.focus(); break; }
-      if (!fd.destination || !fd.destination.trim()) { showToast('Destination path is required', 'error'); document.getElementById('jf-dest')?.focus(); break; }
+      if (!fd.dest || !fd.dest.trim()) { showToast('Destination path is required', 'error'); document.getElementById('jf-dest')?.focus(); break; }
+      // Map form fields to API field names
+      const payload = {
+        name: fd.name, source: fd.source, destination: fd.dest,
+        remote_host: fd.remoteHost, ssh_port: fd.sshPort, ssh_key: fd.sshKey,
+        flags: fd.flags, exclude_patterns: fd.exclude, bandwidth_limit: fd.bwlimit,
+        custom_flags: fd.customFlags, schedule_cron: fd.schedule,
+        schedule_enabled: fd.scheduleEnabled ? 1 : 0,
+      };
       try {
         if (id) {
-          await api('PUT', `/api/jobs/${id}`, fd);
+          await api('PUT', `/api/jobs/${id}`, payload);
           showToast('Job updated');
         } else {
-          await api('POST', '/api/jobs', fd);
+          await api('POST', '/api/jobs', payload);
           showToast('Job created');
         }
         state.modal = null;
@@ -1102,13 +1123,14 @@ document.addEventListener('click', async (e) => {
     }
 
     case 'delete-user':
-      if (!confirm('Delete this user? This cannot be undone.')) return;
-      try {
-        await api('DELETE', `/api/users/${id}`);
-        showToast('User deleted');
-        state.users = await api('GET', '/api/users') || [];
-        renderPage();
-      } catch (err) { showToast(err.message, 'error'); }
+      showConfirm('Delete User', 'Are you sure you want to delete this user? This cannot be undone.', async () => {
+        try {
+          await api('DELETE', `/api/users/${id}`);
+          showToast('User deleted');
+          state.users = await api('GET', '/api/users') || [];
+          renderPage();
+        } catch (err) { showToast(err.message, 'error'); }
+      });
       break;
   }
 });
