@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'preact/hooks';
 import { Icon } from '../lib/icons';
 import { ALL_FLAGS, DEFAULT_FLAGS } from '../lib/flags';
-import { buildRsyncCommand } from '../lib/utils';
+import { buildRsyncCommand, describeCron } from '../lib/utils';
 import { modal } from '../lib/store';
 import { api } from '../lib/api';
 import { showToast } from './Toast';
@@ -20,6 +20,174 @@ function FormField({ id, label, value, placeholder, required, style: wrapStyle, 
   );
 }
 
+/**
+ * FileBrowser — overlay modal that lists directory contents.
+ * Supports both local (server-side) and remote (via SSH) browsing
+ * by calling POST /api/browse. Click directories to navigate,
+ * click "Select This" to pick the current directory path.
+ */
+function FileBrowser({ initialPath, host, port, sshKey, onSelect, onClose }) {
+  const [path, setPath] = useState(initialPath || '/');
+  const [entries, setEntries] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const browse = useCallback(async (p) => {
+    setLoading(true);
+    setError('');
+    try {
+      const body = { path: p };
+      if (host) { body.host = host; body.port = port || '22'; body.key = sshKey || ''; }
+      const res = await api('POST', '/api/browse', body);
+      if (res.ok === false) { setError(res.message); setEntries([]); }
+      else { setEntries(res.entries || []); setPath(res.path || p); }
+    } catch (e) { setError(e.message); }
+    setLoading(false);
+  }, [host, port, sshKey]);
+
+  useEffect(() => { browse(path); }, []);
+
+  const navigate = (entry) => {
+    if (entry.is_dir) browse(entry.path);
+  };
+
+  const selectCurrent = () => { onSelect(path); onClose(); };
+
+  return (
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1100;display:flex;align-items:center;justify-content:center;" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div style="background:#0F172A;border:1px solid #1E293B;border-radius:12px;width:100%;max-width:520px;max-height:70vh;display:flex;flex-direction:column;">
+        <div style="padding:16px 20px;border-bottom:1px solid #1E293B;display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:14px;color:#F1F5F9;font-weight:600;">
+            <Icon name="folder-open" /> Browse {host ? `${host}:` : 'Local '}Files
+          </span>
+          <button onClick={onClose} style="background:none;border:none;color:#64748B;cursor:pointer;"><Icon name="x" /></button>
+        </div>
+
+        {/* Current path bar */}
+        <div style="padding:10px 20px;background:#020617;display:flex;align-items:center;gap:8px;">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#60A5FA;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{path}</span>
+          <button onClick={selectCurrent} style="padding:4px 12px;background:#3B82F6;border:none;border-radius:6px;color:#fff;font-family:'JetBrains Mono',monospace;font-size:11px;cursor:pointer;white-space:nowrap;">
+            Select This
+          </button>
+        </div>
+
+        {/* Entries */}
+        <div style="flex:1;overflow-y:auto;padding:8px 0;">
+          {loading && <div style="padding:20px;text-align:center;color:#64748B;font-family:'JetBrains Mono',monospace;font-size:12px;">Loading...</div>}
+          {error && <div style="padding:12px 20px;color:#EF4444;font-family:'JetBrains Mono',monospace;font-size:12px;">{error}</div>}
+          {!loading && entries.map(e => (
+            <div key={e.path}
+              onClick={() => e.is_dir ? navigate(e) : onSelect(e.path) || onClose()}
+              style="padding:6px 20px;display:flex;align-items:center;gap:10px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:12px;color:#CBD5E1;transition:background .1s;"
+              onMouseEnter={ev => ev.currentTarget.style.background = '#1E293B'}
+              onMouseLeave={ev => ev.currentTarget.style.background = 'transparent'}>
+              <span style={{ color: e.is_dir ? '#60A5FA' : '#64748B' }}>
+                <Icon name={e.is_dir ? 'folder' : 'file'} />
+              </span>
+              <span style={{ color: e.is_dir ? '#93C5FD' : '#94A3B8' }}>{e.name}{e.is_dir && '/'}</span>
+            </div>
+          ))}
+          {!loading && !error && entries.length === 0 && (
+            <div style="padding:20px;text-align:center;color:#64748B;font-family:'JetBrains Mono',monospace;font-size:12px;">Empty directory</div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * SshTestButton — inline button that tests SSH connectivity to the
+ * configured remote host. Calls POST /api/ssh/test and displays
+ * a success/failure indicator with the server's response message.
+ */
+function SshTestButton({ getFormData }) {
+  const [status, setStatus] = useState(null); // null | 'testing' | 'ok' | 'fail'
+  const [message, setMessage] = useState('');
+
+  const test = async () => {
+    const fd = getFormData();
+    if (!fd.remoteHost) { showToast('Enter a remote host first', 'error'); return; }
+    setStatus('testing');
+    setMessage('');
+    try {
+      const res = await api('POST', '/api/ssh/test', {
+        host: fd.remoteHost, port: fd.sshPort || '22', key: fd.sshKey || '',
+      });
+      setStatus(res.ok ? 'ok' : 'fail');
+      setMessage(res.message);
+    } catch (e) { setStatus('fail'); setMessage(e.message); }
+  };
+
+  const colors = { testing: '#EAB308', ok: '#22C55E', fail: '#EF4444' };
+
+  return (
+    <div style="margin-top:8px;display:flex;align-items:center;gap:10px;">
+      <button onClick={test} disabled={status === 'testing'} style={{
+        padding: '6px 14px', background: 'transparent', border: '1px solid #334155',
+        borderRadius: 6, color: '#60A5FA', fontFamily: "'JetBrains Mono',monospace",
+        fontSize: 11, cursor: status === 'testing' ? 'wait' : 'pointer',
+        display: 'flex', alignItems: 'center', gap: 6,
+      }}>
+        <Icon name="wifi" />
+        {status === 'testing' ? 'Testing...' : 'Test SSH Connection'}
+      </button>
+      {status && status !== 'testing' && (
+        <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, color: colors[status] }}>
+          <Icon name={status === 'ok' ? 'check' : 'alert'} /> {message}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/**
+ * PathInput — text input with a folder-browse button that opens
+ * the FileBrowser modal. When a path is selected, it programmatically
+ * updates the input value and fires an input event so the command
+ * preview refreshes automatically.
+ */
+function PathInput({ id, label, value, placeholder, required, host, port, sshKey }) {
+  const [browserOpen, setBrowserOpen] = useState(false);
+
+  const setInputValue = (val) => {
+    const el = document.getElementById(id);
+    if (el) {
+      // Trigger Preact's input event for preview update
+      const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+      nativeInputValueSetter.call(el, val);
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+  };
+
+  return (
+    <div>
+      <label style="display:block;font-family:'JetBrains Mono',monospace;font-size:11px;text-transform:uppercase;color:#94A3B8;margin-bottom:6px;letter-spacing:1px;">
+        {label}{required && <span style="color:#EF4444;"> *</span>}
+      </label>
+      <div style="display:flex;gap:4px;">
+        <input id={id} type="text" value={value || ''} placeholder={placeholder || ''}
+          style="flex:1;padding:8px 12px;background:#020617;border:1px solid #1E293B;border-radius:6px;color:#F1F5F9;font-family:'JetBrains Mono',monospace;font-size:13px;outline:none;box-sizing:border-box;" />
+        <button onClick={() => setBrowserOpen(true)} title="Browse files" style={{
+          padding: '8px 10px', background: '#1E293B', border: '1px solid #334155',
+          borderRadius: 6, color: '#94A3B8', cursor: 'pointer', display: 'flex', alignItems: 'center',
+        }}>
+          <Icon name="folder" />
+        </button>
+      </div>
+      {browserOpen && (
+        <FileBrowser
+          initialPath={document.getElementById(id)?.value || '/'}
+          host={host} port={port} sshKey={sshKey}
+          onSelect={setInputValue}
+          onClose={() => setBrowserOpen(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+
 export function JobModal({ job, onSaved }) {
   const isEdit = !!job?.id;
   const title = isEdit ? 'Edit rsync Job' : 'New rsync Job';
@@ -30,6 +198,7 @@ export function JobModal({ job, onSaved }) {
 
   const [selectedFlags, setSelectedFlags] = useState(initialFlags);
   const [preview, setPreview] = useState('rsync -avh /source/ /dest/');
+  const [cronDesc, setCronDesc] = useState('');
 
   const getFormData = useCallback(() => {
     const g = id => document.getElementById(id)?.value || '';
@@ -45,7 +214,9 @@ export function JobModal({ job, onSaved }) {
   }, [selectedFlags]);
 
   const updatePreview = useCallback(() => {
-    setPreview(buildRsyncCommand(getFormData()));
+    const fd = getFormData();
+    setPreview(buildRsyncCommand(fd));
+    setCronDesc(describeCron(fd.schedule));
   }, [getFormData]);
 
   useEffect(() => { updatePreview(); }, [selectedFlags]);
@@ -101,13 +272,17 @@ export function JobModal({ job, onSaved }) {
 
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px;">
             <div>
-              <FormField id="jf-source" label="Source Path" value={job?.source} placeholder="/path/to/source/" required />
+              <PathInput id="jf-source" label="Source Path" value={job?.source} placeholder="/path/to/source/" required
+                host="" port="" sshKey="" />
               <div style="font-size:10px;color:#EAB308;font-family:'JetBrains Mono',monospace;margin-top:4px;display:flex;align-items:center;gap:4px;">
                 <Icon name="warning" />
                 Trailing / syncs contents only — without / syncs the folder itself
               </div>
             </div>
-            <FormField id="jf-dest" label="Destination Path" value={job?.dest || job?.destination} placeholder="/path/to/dest/" required />
+            <PathInput id="jf-dest" label="Destination Path" value={job?.dest || job?.destination} placeholder="/path/to/dest/" required
+              host={document.getElementById('jf-remote-host')?.value || job?.remote_host || job?.remoteHost || ''}
+              port={document.getElementById('jf-ssh-port')?.value || job?.ssh_port || job?.sshPort || '22'}
+              sshKey={document.getElementById('jf-ssh-key')?.value || job?.ssh_key || job?.sshKey || ''} />
           </div>
 
           <div style="display:grid;grid-template-columns:5fr 2fr 5fr;gap:16px;margin-top:16px;">
@@ -115,6 +290,9 @@ export function JobModal({ job, onSaved }) {
             <FormField id="jf-ssh-port" label="SSH Port" value={job?.sshPort || job?.ssh_port || '22'} placeholder="22" />
             <FormField id="jf-ssh-key" label="SSH Key Path" value={job?.sshKey || job?.ssh_key} placeholder="~/.ssh/id_rsa" />
           </div>
+
+          {/* SSH Test Button */}
+          <SshTestButton getFormData={getFormData} />
 
           {/* Flags */}
           <div style="margin-top:16px;">
@@ -154,7 +332,14 @@ export function JobModal({ job, onSaved }) {
           </div>
 
           <div style="display:grid;grid-template-columns:1fr auto;gap:16px;margin-top:16px;align-items:end;">
-            <FormField id="jf-schedule" label="Cron Schedule" value={job?.schedule || job?.schedule_cron} placeholder="0 */6 * * *" />
+            <div>
+              <FormField id="jf-schedule" label="Cron Schedule" value={job?.schedule || job?.schedule_cron} placeholder="0 */6 * * *" />
+              {cronDesc && (
+                <div style="margin-top:4px;font-family:'JetBrains Mono',monospace;font-size:11px;color:#34D399;display:flex;align-items:center;gap:4px;">
+                  <Icon name="chevron-right" /> {cronDesc}
+                </div>
+              )}
+            </div>
             <div>
               <label style="display:block;font-family:'JetBrains Mono',monospace;font-size:11px;text-transform:uppercase;color:#94A3B8;margin-bottom:6px;letter-spacing:1px;">Enabled</label>
               <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px 0;">

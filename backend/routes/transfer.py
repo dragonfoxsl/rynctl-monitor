@@ -1,9 +1,11 @@
 """
-Job import/export and SSH connection test routes.
+Job import/export, SSH connection test, and file browser routes.
 """
 
+import os
 import json
 import subprocess
+import shlex
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
@@ -137,6 +139,100 @@ async def test_ssh(request: Request):
         return {"ok": False, "message": "SSH client not found on server"}
     except Exception as exc:
         return {"ok": False, "message": str(exc)}
+
+
+# ---------------------------------------------------------------------------
+# File browser (local or remote via SSH)
+# ---------------------------------------------------------------------------
+
+@router.post("/browse")
+async def browse_path(request: Request):
+    """
+    List directory contents for the file browser.
+    Expects { path, host?, port?, key? }.
+    If host is provided, lists remote directory via SSH ls.
+    Otherwise lists local server directory.
+    """
+    require_role(request, "admin", "rsync")
+    body = await request.json()
+
+    path = body.get("path", "/").strip() or "/"
+    host = body.get("host", "").strip()
+    port = body.get("port", "22")
+    key = body.get("key", "")
+
+    if host:
+        # Remote listing via SSH
+        # Use ls -1pa to get entries with / suffix for directories
+        ls_cmd = f"ls -1pa {shlex.quote(path)} 2>/dev/null"
+        cmd = ["ssh", "-o", "StrictHostKeyChecking=accept-new",
+               "-o", "ConnectTimeout=5", "-o", "BatchMode=yes"]
+        if port and port != "22":
+            cmd.extend(["-p", str(port)])
+        if key:
+            cmd.extend(["-i", key])
+        cmd.extend([host, ls_cmd])
+
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+            if result.returncode != 0:
+                return {"ok": False, "message": result.stderr.strip() or "Failed to list directory",
+                        "entries": [], "path": path}
+            entries = _parse_ls_output(result.stdout, path)
+            return {"ok": True, "entries": entries, "path": path}
+        except subprocess.TimeoutExpired:
+            return {"ok": False, "message": "Timed out listing remote directory",
+                    "entries": [], "path": path}
+        except Exception as exc:
+            return {"ok": False, "message": str(exc), "entries": [], "path": path}
+    else:
+        # Local listing
+        if not os.path.isdir(path):
+            return {"ok": False, "message": f"Not a directory: {path}",
+                    "entries": [], "path": path}
+        try:
+            entries = []
+            # Add parent directory entry
+            parent = os.path.dirname(path.rstrip("/"))
+            if parent and parent != path:
+                entries.append({"name": "..", "is_dir": True, "path": parent + "/"})
+            for name in sorted(os.listdir(path)):
+                full = os.path.join(path, name)
+                is_dir = os.path.isdir(full)
+                entries.append({
+                    "name": name,
+                    "is_dir": is_dir,
+                    "path": (full + "/") if is_dir else full,
+                })
+            return {"ok": True, "entries": entries, "path": path}
+        except PermissionError:
+            return {"ok": False, "message": f"Permission denied: {path}",
+                    "entries": [], "path": path}
+        except Exception as exc:
+            return {"ok": False, "message": str(exc), "entries": [], "path": path}
+
+
+def _parse_ls_output(output, base_path):
+    """Parse `ls -1pa` output into entry dicts."""
+    base = base_path.rstrip("/") + "/"
+    entries = []
+    for line in output.strip().splitlines():
+        line = line.strip()
+        if not line or line == "./" :
+            continue
+        is_dir = line.endswith("/")
+        name = line.rstrip("/")
+        if name == "..":
+            parent = os.path.dirname(base_path.rstrip("/"))
+            entries.insert(0, {"name": "..", "is_dir": True, "path": (parent or "/") + "/"})
+        else:
+            full = base + name
+            entries.append({
+                "name": name,
+                "is_dir": is_dir,
+                "path": (full + "/") if is_dir else full,
+            })
+    return entries
 
 
 # ---------------------------------------------------------------------------
