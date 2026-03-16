@@ -1,5 +1,12 @@
 # Rynctl Monitor
 
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB.svg?logo=python&logoColor=white)](https://python.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![Docker](https://img.shields.io/badge/Docker-ready-2496ED.svg?logo=docker&logoColor=white)](Dockerfile)
+[![SQLite](https://img.shields.io/badge/SQLite-003B57.svg?logo=sqlite&logoColor=white)](https://sqlite.org)
+[![Preact](https://img.shields.io/badge/Preact-673AB8.svg?logo=preact&logoColor=white)](https://preactjs.com)
+
 A self-hosted web UI for managing, scheduling, and monitoring rsync jobs on Linux servers. Runs in Docker or standalone, pairs with [rynctl.com](https://rynctl.com).
 
 ---

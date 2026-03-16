@@ -3,8 +3,11 @@ Application configuration loaded from environment variables.
 Supports .env file loading for local development.
 """
 
+import logging
 import os
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 # Load .env file if it exists (development convenience)
 _env_file = Path(__file__).resolve().parent.parent / ".env"
@@ -49,3 +52,12 @@ WEBHOOK_EVENTS = os.environ.get("RYNCTL_WEBHOOK_EVENTS", "failure")  # failure,s
 # Metrics
 # ---------------------------------------------------------------------------
 METRICS_ENABLED = os.environ.get("RYNCTL_METRICS", "true").lower() in ("1", "true", "yes")
+
+# ---------------------------------------------------------------------------
+# Startup warnings for insecure defaults
+# ---------------------------------------------------------------------------
+if SECRET == "change-me":
+    logger.warning(
+        "RYNCTL_SECRET is set to the default value — set a strong random "
+        "secret via RYNCTL_SECRET before exposing this instance to the network"
+    )

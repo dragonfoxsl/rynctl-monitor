@@ -62,7 +62,11 @@ def init_db():
                 ("admin", pw_hash, "admin"),
             )
             conn.commit()
-            logger.info("Seeded default admin user")
+            logger.info("Seeded default admin user (admin/admin)")
+            logger.warning(
+                "Default admin password is 'admin' — change it immediately "
+                "after first login"
+            )
     finally:
         conn.close()
 
