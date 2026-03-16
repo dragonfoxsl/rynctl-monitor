@@ -4,6 +4,7 @@
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB.svg?logo=python&logoColor=white)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![Docker](https://img.shields.io/badge/Docker-ready-2496ED.svg?logo=docker&logoColor=white)](Dockerfile)
+[![GHCR](https://img.shields.io/badge/GHCR-package-blue.svg?logo=github)](https://github.com/dragonfoxsl/rynctl-monitor/pkgs/container/rynctl-monitor)
 [![SQLite](https://img.shields.io/badge/SQLite-003B57.svg?logo=sqlite&logoColor=white)](https://sqlite.org)
 [![Preact](https://img.shields.io/badge/Preact-673AB8.svg?logo=preact&logoColor=white)](https://preactjs.com)
 
@@ -84,6 +85,18 @@ services:
 
 volumes:
   rynctl-data:
+```
+
+### Pre-built image (GHCR)
+
+Pull the latest published image without building locally:
+
+```bash
+docker run -d -p 8080:8080 \
+  -v rynctl-data:/data \
+  -e RYNCTL_SECRET=my-secret \
+  --name rynctl-monitor \
+  ghcr.io/dragonfoxsl/rynctl-monitor:latest
 ```
 
 ### Docker build (manual)
