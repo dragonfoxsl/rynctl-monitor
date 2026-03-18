@@ -1,5 +1,6 @@
 # Rynctl Monitor
 
+[![Build](https://github.com/dragonfoxsl/rynctl-monitor/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/dragonfoxsl/rynctl-monitor/actions/workflows/docker-publish.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB.svg?logo=python&logoColor=white)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
@@ -89,7 +90,13 @@ volumes:
 
 ### Pre-built image (GHCR)
 
-Pull the latest published image without building locally:
+Use the pre-built image from GitHub Container Registry — no local build required:
+
+```bash
+docker compose -f docker-compose.ghcr.yml up -d
+```
+
+Or run directly without a compose file:
 
 ```bash
 docker run -d -p 8080:8080 \
