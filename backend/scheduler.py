@@ -10,7 +10,7 @@ from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
 from backend.database import cleanup_expired_sessions, get_db
-from backend.rsync import run_rsync_job
+from backend.job_runner import enqueue_job
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +42,13 @@ def schedule_job(job_id: int, cron_expr: str):
         day_of_week=parts[4],
     )
     scheduler.add_job(
-        run_rsync_job, trigger, args=[job_id], id=job_tag, replace_existing=True
+        enqueue_job,
+        trigger,
+        args=[job_id, "schedule"],
+        id=job_tag,
+        replace_existing=True,
+        max_instances=1,
+        coalesce=True,
     )
     logger.info("Scheduled job %d with cron: %s", job_id, cron_expr)
 

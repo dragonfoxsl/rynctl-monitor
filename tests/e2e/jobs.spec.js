@@ -1,6 +1,6 @@
 // @ts-check
 const { test, expect } = require("@playwright/test");
-const { login, createJob } = require("./helpers");
+const { login, csrfHeaders, createJob } = require("./helpers");
 
 test.describe("Jobs API", () => {
   test.beforeEach(async ({ page }) => {
@@ -30,13 +30,16 @@ test.describe("Jobs API", () => {
     // Update
     const putRes = await page.request.put(`/api/jobs/${job.id}`, {
       data: { name: "Updated Job" },
+      headers: await csrfHeaders(page),
     });
     expect(putRes.ok()).toBeTruthy();
     const updated = await putRes.json();
     expect(updated.name).toBe("Updated Job");
 
     // Delete
-    const delRes = await page.request.delete(`/api/jobs/${job.id}`);
+    const delRes = await page.request.delete(`/api/jobs/${job.id}`, {
+      headers: await csrfHeaders(page),
+    });
     expect(delRes.ok()).toBeTruthy();
 
     // Verify gone
@@ -47,6 +50,7 @@ test.describe("Jobs API", () => {
   test("create job validates required fields", async ({ page }) => {
     const res = await page.request.post("/api/jobs", {
       data: { name: "", source: "", destination: "" },
+      headers: await csrfHeaders(page),
     });
     expect(res.ok()).toBeFalsy();
   });
@@ -60,7 +64,9 @@ test.describe("Jobs API", () => {
     expect(body.command).toContain("/tmp/src");
 
     // Cleanup
-    await page.request.delete(`/api/jobs/${job.id}`);
+    await page.request.delete(`/api/jobs/${job.id}`, {
+      headers: await csrfHeaders(page),
+    });
   });
 
   test("job runs list is initially empty", async ({ page }) => {
@@ -71,7 +77,9 @@ test.describe("Jobs API", () => {
     expect(Array.isArray(body)).toBeTruthy();
     expect(body.length).toBe(0);
 
-    await page.request.delete(`/api/jobs/${job.id}`);
+    await page.request.delete(`/api/jobs/${job.id}`, {
+      headers: await csrfHeaders(page),
+    });
   });
 
   test("tags endpoint returns an array", async ({ page }) => {

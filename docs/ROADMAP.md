@@ -71,4 +71,4 @@
 ## Excluded
 
 - **2FA / TOTP** — Not planned for this release
-- **Prometheus metrics** — Removed from scope
+- **Prometheus metrics removal** — Removed from scope change; metrics are currently implemented and documented

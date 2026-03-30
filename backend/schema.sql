@@ -7,6 +7,8 @@ CREATE TABLE IF NOT EXISTS users (
     username      TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
     role          TEXT NOT NULL DEFAULT 'readonly',
+    failed_login_attempts INTEGER DEFAULT 0,
+    lockout_until TEXT,
     created_at    TEXT DEFAULT (datetime('now')),
     last_login    TEXT
 );
@@ -36,6 +38,7 @@ CREATE TABLE IF NOT EXISTS jobs (
     schedule_enabled INTEGER DEFAULT 0,
     retry_max        INTEGER DEFAULT 0,
     retry_delay      INTEGER DEFAULT 30,
+    max_runtime      INTEGER DEFAULT 0,
     created_by       INTEGER REFERENCES users(id),
     created_at       TEXT DEFAULT (datetime('now')),
     updated_at       TEXT DEFAULT (datetime('now'))

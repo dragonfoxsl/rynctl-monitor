@@ -1,64 +1,120 @@
 import { Icon } from '../lib/icons';
-import { user, page, isAdmin } from '../lib/store';
-import { api } from '../lib/api';
+import { user, page, isAdmin, theme, toggleTheme } from '../lib/store';
+import { api, clearCsrfToken } from '../lib/api';
 
 export function Sidebar({ onNavigate }) {
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
-    { id: 'jobs', label: 'Jobs', icon: 'jobs' },
+    { id: 'create-job', label: 'Create Job', icon: 'plus' },
+    { id: 'jobs', label: 'Task Management', icon: 'jobs' },
     { id: 'runs', label: 'Run History', icon: 'history' },
-    { id: 'flags', label: 'Flags Reference', icon: 'flag' },
-    { id: 'crontab', label: 'Crontab', icon: 'terminal' },
+    { id: 'flags', label: 'Logs', icon: 'list' },
   ];
   if (isAdmin()) {
-    navItems.push({ id: 'users', label: 'Users', icon: 'users' });
     navItems.push({ id: 'settings', label: 'Settings', icon: 'settings' });
+    navItems.push({ id: 'users', label: 'Users', icon: 'users' });
   }
 
   const u = user.value;
   const initial = u ? u.username.charAt(0).toUpperCase() : '?';
+  const isDark = theme.value === 'dark';
 
   const handleLogout = async () => {
     try { await api('POST', '/api/auth/logout'); } catch (_) {}
+    clearCsrfToken();
     user.value = null;
     page.value = 'login';
     window.location.hash = '';
   };
 
   return (
-    <aside style="width:240px;min-height:100vh;background:#1E293B;border-right:1px solid #334155;display:flex;flex-direction:column;padding:24px 0;position:fixed;top:0;left:0;z-index:100;">
-      <div style="padding:0 24px 24px;">
-        <div style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:20px;">
-          <span style="color:#3B82F6;">R~</span><span style="color:#F1F5F9;">RYNCTL</span><span style="color:#64748B;">MONITOR</span>
+    <aside style={{
+      width: 'var(--sidebar-width)',
+      minHeight: '100vh',
+      background: 'var(--bg-sidebar)',
+      borderRight: '1px solid var(--border-primary)',
+      display: 'flex',
+      flexDirection: 'column',
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      zIndex: 100,
+      boxShadow: 'var(--shadow-sm)',
+    }}>
+      {/* Brand */}
+      <div style={{ padding: '24px 20px 20px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{
+            width: 36, height: 36, borderRadius: 'var(--radius-md)',
+            background: 'var(--accent)', display: 'flex', alignItems: 'center',
+            justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 16,
+            fontFamily: 'var(--font-mono)',
+          }}>R</div>
+          <div>
+            <div style={{ fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 16, color: 'var(--text-primary)' }}>
+              Rsync Monitor
+            </div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              System Control
+            </div>
+          </div>
         </div>
-        <div style="font-size:12px;color:#64748B;margin-top:4px;font-family:'JetBrains Mono',monospace;">rsync job manager</div>
       </div>
-      <div style="padding:0 24px;margin-bottom:12px;">
-        <span style="font-size:10px;text-transform:uppercase;color:#475569;letter-spacing:1.5px;font-family:'JetBrains Mono',monospace;">Navigation</span>
-      </div>
-      <nav style="flex:1;">
+
+      {/* Navigation */}
+      <nav style={{ flex: 1, padding: '0 12px' }}>
         {navItems.map(item => {
           const active = page.value === item.id;
           return (
             <a key={item.id} href={`#${item.id}`} onClick={(e) => { e.preventDefault(); onNavigate(item.id); }} style={{
-              display: 'flex', alignItems: 'center', gap: 12, padding: '10px 24px', cursor: 'pointer', textDecoration: 'none',
-              fontFamily: "'JetBrains Mono',monospace", fontSize: 13, transition: 'all .15s',
-              borderLeft: `2px solid ${active ? '#3B82F6' : 'transparent'}`,
-              background: active ? 'rgba(59,130,246,0.08)' : 'transparent',
-              color: active ? '#3B82F6' : '#94A3B8', paddingLeft: 22,
-            }}>
-              <Icon name={item.icon} /> {item.label}
+              display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
+              cursor: 'pointer', textDecoration: 'none', borderRadius: 'var(--radius-md)',
+              fontFamily: 'var(--font-sans)', fontSize: 14, transition: 'all .15s',
+              marginBottom: 2,
+              background: active ? 'var(--accent-light)' : 'transparent',
+              color: active ? 'var(--accent)' : 'var(--text-secondary)',
+              fontWeight: active ? 600 : 400,
+            }}
+            onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'var(--bg-hover)'; }}
+            onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent'; }}
+            >
+              <Icon name={item.icon} size={18} /> {item.label}
             </a>
           );
         })}
       </nav>
-      <div style="padding:16px 24px;border-top:1px solid #1E293B;display:flex;align-items:center;gap:12px;">
-        <div style="width:36px;height:36px;border-radius:50%;background:#3B82F6;display:flex;align-items:center;justify-content:center;color:#fff;font-family:'JetBrains Mono',monospace;font-weight:700;font-size:14px;">{initial}</div>
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:13px;color:#F1F5F9;font-family:'JetBrains Mono',monospace;">{u?.username}</div>
-          <div style="font-size:11px;color:#64748B;font-family:'JetBrains Mono',monospace;">{u?.role}</div>
+
+      {/* Theme toggle */}
+      <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border-primary)' }}>
+        <button onClick={toggleTheme} style={{
+          display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+          padding: '8px 0', background: 'none', border: 'none',
+          color: 'var(--text-secondary)', fontFamily: 'var(--font-sans)',
+          fontSize: 13, cursor: 'pointer', textAlign: 'left',
+        }}>
+          <span style={{ fontSize: 16 }}>{isDark ? '☀️' : '🌙'}</span>
+          {isDark ? 'Light Mode' : 'Dark Mode'}
+        </button>
+      </div>
+
+      {/* User section */}
+      <div style={{
+        padding: '16px 20px', borderTop: '1px solid var(--border-primary)',
+        display: 'flex', alignItems: 'center', gap: 12,
+      }}>
+        <div style={{
+          width: 36, height: 36, borderRadius: '50%', background: 'var(--accent)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: '#fff', fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 14,
+        }}>{initial}</div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)', fontFamily: 'var(--font-sans)' }}>{u?.username}</div>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-sans)', textTransform: 'capitalize' }}>{u?.role}</div>
         </div>
-        <button onClick={handleLogout} title="Logout" style="background:none;border:none;color:#64748B;cursor:pointer;padding:4px;">
+        <button onClick={handleLogout} title="Logout" style={{
+          background: 'none', border: 'none', color: 'var(--text-muted)',
+          cursor: 'pointer', padding: 4,
+        }}>
           <Icon name="logout" />
         </button>
       </div>

@@ -9,20 +9,50 @@ export function ConfirmDialog() {
   const confirm = () => { d.onConfirm(); close(); };
 
   return (
-    <div style="position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);z-index:2000;display:flex;align-items:center;justify-content:center;">
-      <div style="background:#0F172A;border:1px solid #1E293B;border-radius:12px;width:100%;max-width:400px;animation:slideUp .2s ease;">
-        <div style="padding:20px 24px;border-bottom:1px solid #1E293B;">
-          <div style="font-family:'JetBrains Mono',monospace;font-size:16px;color:#F1F5F9;font-weight:600;display:flex;align-items:center;gap:10px;">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EAB308" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)',
+      zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }}>
+      <div style={{
+        background: 'var(--bg-secondary)', border: '1px solid var(--border-primary)',
+        borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: 420,
+        animation: 'slideUp .2s ease', boxShadow: 'var(--shadow-lg)',
+      }}>
+        <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border-primary)' }}>
+          <div style={{
+            fontFamily: 'var(--font-sans)', fontSize: 16, color: 'var(--text-primary)',
+            fontWeight: 600, display: 'flex', alignItems: 'center', gap: 10,
+          }}>
+            <div style={{
+              width: 32, height: 32, borderRadius: 'var(--radius-md)',
+              background: 'var(--warning-light)', display: 'flex', alignItems: 'center',
+              justifyContent: 'center', color: 'var(--warning-text)',
+            }}>
+              <Icon name="warning" size={16} />
+            </div>
             {d.title}
           </div>
         </div>
-        <div style="padding:20px 24px;">
-          <p style="font-family:'IBM Plex Sans',-apple-system,sans-serif;font-size:14px;color:#94A3B8;margin:0;line-height:1.6;">{d.message}</p>
+        <div style={{ padding: '20px 24px' }}>
+          <p style={{
+            fontFamily: 'var(--font-sans)', fontSize: 14, color: 'var(--text-secondary)',
+            margin: 0, lineHeight: 1.6,
+          }}>{d.message}</p>
         </div>
-        <div style="padding:16px 24px;border-top:1px solid #1E293B;display:flex;justify-content:flex-end;gap:10px;">
-          <button onClick={close} style="padding:8px 16px;background:none;border:1px solid #334155;border-radius:8px;color:#94A3B8;font-family:'JetBrains Mono',monospace;font-size:12px;cursor:pointer;">Cancel</button>
-          <button onClick={confirm} style="padding:8px 16px;background:#DC2626;border:none;border-radius:8px;color:#fff;font-family:'JetBrains Mono',monospace;font-size:12px;cursor:pointer;">Confirm</button>
+        <div style={{
+          padding: '16px 24px', borderTop: '1px solid var(--border-primary)',
+          display: 'flex', justifyContent: 'flex-end', gap: 10,
+        }}>
+          <button onClick={close} style={{
+            padding: '8px 18px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-input)',
+            borderRadius: 'var(--radius-md)', color: 'var(--text-secondary)',
+            fontFamily: 'var(--font-sans)', fontSize: 13, cursor: 'pointer', fontWeight: 500,
+          }}>Cancel</button>
+          <button onClick={confirm} style={{
+            padding: '8px 18px', background: 'var(--error)', border: 'none',
+            borderRadius: 'var(--radius-md)', color: '#fff',
+            fontFamily: 'var(--font-sans)', fontSize: 13, cursor: 'pointer', fontWeight: 600,
+          }}>Confirm</button>
         </div>
       </div>
     </div>

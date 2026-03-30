@@ -12,6 +12,7 @@ import { Flags } from './pages/Flags';
 import { Crontab } from './pages/Crontab';
 import { Users } from './pages/Users';
 import { Settings } from './pages/Settings';
+import { CreateJob } from './pages/CreateJob';
 
 export function App() {
   // Check session on mount
@@ -57,6 +58,7 @@ export function App() {
   switch (page.value) {
     case 'dashboard': pageContent = <Dashboard />; break;
     case 'jobs': pageContent = <Jobs />; break;
+    case 'create-job': pageContent = <CreateJob />; break;
     case 'runs': pageContent = <Runs />; break;
     case 'flags': pageContent = <Flags />; break;
     case 'crontab': pageContent = <Crontab />; break;
@@ -68,7 +70,10 @@ export function App() {
   return (
     <>
       <Sidebar onNavigate={navigate} />
-      <main style="margin-left:240px;padding:28px 36px;min-height:100vh;">
+      <main style={{
+        marginLeft: 'var(--sidebar-width)', padding: '28px 36px',
+        minHeight: '100vh', background: 'var(--bg-primary)',
+      }}>
         {pageContent}
       </main>
       <ToastContainer />

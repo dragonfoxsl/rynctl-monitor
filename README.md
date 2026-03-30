@@ -60,6 +60,34 @@ A self-hosted web UI for managing, scheduling, and monitoring rsync jobs on Linu
 
 4. Open `http://localhost:8080` and log in with **admin / admin**. Change the password immediately.
 
+For an application-only compose file with no tool/test services:
+
+```bash
+docker compose -f docker-compose.app.yml up -d
+```
+
+### Container-only workflow
+
+If you do not want Python or Node installed on the host, you can run builds and tests entirely with Docker:
+
+```bash
+make build
+make up
+make frontend-build
+make backend-tests
+make e2e-tests
+```
+
+Or use Docker Compose directly:
+
+```bash
+docker compose build rynctl-monitor
+docker compose up -d rynctl-monitor
+docker compose --profile tools run --rm frontend-build
+docker compose --profile tools run --rm backend-tests
+docker compose --profile tools run --rm e2e-tests
+```
+
 #### Docker Compose file
 
 The default `docker-compose.yml` creates a named volume for the database and logs. To let rsync reach host directories or use SSH keys, uncomment and edit the volume mounts:
@@ -140,7 +168,7 @@ The server starts on `http://localhost:8080`. The SQLite database is created aut
 
 ### Frontend
 
-The frontend is a Preact SPA built with Vite. During development you can rebuild it with:
+The frontend is a Preact SPA built with Vite. During development you need a frontend build present in `static/dist/`. Rebuild it with:
 
 ```bash
 cd frontend
@@ -149,6 +177,21 @@ npm run build
 ```
 
 Built assets are written to `static/dist/` and served by the FastAPI backend. There is no separate dev server — just rebuild and reload.
+
+### Tests
+
+For backend unit tests:
+
+```bash
+pip install -r requirements-dev.txt
+pytest
+```
+
+To run those tests in containers only:
+
+```bash
+make backend-tests
+```
 
 ---
 
@@ -166,6 +209,7 @@ All settings are optional. Defaults are designed for a quick local start.
 | `RYNCTL_MAX_LOGIN_ATTEMPTS` | `5` | Failed login attempts before temporary lockout |
 | `RYNCTL_LOCKOUT_MINUTES` | `15` | Lockout duration after exceeding max login attempts |
 | `RYNCTL_RATE_LIMIT_RPM` | `120` | Maximum API requests per minute per IP |
+| `RYNCTL_BROWSE_ROOTS` | *(empty)* | Optional comma-separated local directory roots allowed for `/api/browse`; when empty, local browsing is unrestricted |
 | `RYNCTL_RETRY_MAX` | `0` | Default retry count for new jobs (0 = no retries) |
 | `RYNCTL_RETRY_DELAY` | `30` | Default delay in seconds between retries |
 | `RYNCTL_WEBHOOK_URL` | *(empty)* | URL to POST when a job finishes (leave empty to disable) |
@@ -221,8 +265,10 @@ All API routes are prefixed with `/api`.
 | POST | `/api/ssh/test` | Test SSH connectivity to a remote host |
 | POST | `/api/browse` | Browse local or remote directory contents |
 | GET | `/api/backup` | Download the SQLite database |
+| GET | `/api/backup/download` | Download the SQLite database |
 | POST | `/api/backup/restore` | Upload and restore a database backup |
 | GET | `/api/metrics` | Prometheus-format metrics |
+| GET | `/metrics` | Prometheus-format metrics (legacy path) |
 | GET | `/api/health` | Health check |
 
 ---

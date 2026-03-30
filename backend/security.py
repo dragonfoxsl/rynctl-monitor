@@ -5,10 +5,13 @@ Password hashing (PBKDF2-SHA256) and session-based authentication helpers.
 import hashlib
 import re
 import secrets
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Optional, Tuple
 
 from fastapi import HTTPException, Request
+
+from backend.config import SESSION_EXPIRY_DAYS
+from backend.time_utils import format_db_timestamp, parse_db_timestamp, utc_now
 
 
 def hash_password(password: str, salt: Optional[bytes] = None) -> str:
@@ -49,7 +52,7 @@ def create_session(user_id: int) -> str:
 
     token = secrets.token_hex(32)
     csrf_token = secrets.token_hex(32)
-    expires = (datetime.utcnow() + timedelta(days=7)).strftime("%Y-%m-%d %H:%M:%S")
+    expires = format_db_timestamp(utc_now() + timedelta(days=SESSION_EXPIRY_DAYS))
     conn = get_db()
     try:
         conn.execute(
@@ -84,7 +87,7 @@ def get_current_user(request: Request) -> Optional[dict]:
         ).fetchone()
         if not row:
             return None
-        if datetime.strptime(row["expires_at"], "%Y-%m-%d %H:%M:%S") < datetime.utcnow():
+        if parse_db_timestamp(row["expires_at"]) < utc_now():
             conn.execute("DELETE FROM sessions WHERE token = ?", (token,))
             conn.commit()
             return None

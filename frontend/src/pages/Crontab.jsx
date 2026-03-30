@@ -14,18 +14,29 @@ export function Crontab() {
 
   return (
     <>
-      <div style="margin-bottom:24px;">
-        <h1 style="font-family:'JetBrains Mono',monospace;font-weight:600;font-size:24px;margin:0;">
-          <span style="color:#64748B;">~/</span><span style="color:#F1F5F9;">crontab</span>
+      <div style={{ marginBottom: 28 }}>
+        <h1 style={{ fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 26, margin: 0, color: 'var(--text-primary)' }}>
+          System Crontab
         </h1>
+        <p style={{ fontFamily: 'var(--font-sans)', fontSize: 14, color: 'var(--text-muted)', margin: '4px 0 0' }}>
+          Active rsync entries detected in system crontab.
+        </p>
       </div>
-      <div style="background:#1E293B;border-radius:10px;border:1px solid #334155;overflow:hidden;">
+      <div style={{
+        background: 'var(--bg-secondary)', borderRadius: 'var(--radius-lg)',
+        border: '1px solid var(--border-primary)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)',
+      }}>
         {entries.length === 0 ? (
-          <div style="padding:32px;text-align:center;color:#64748B;font-family:'JetBrains Mono',monospace;font-size:13px;">No rsync entries found in system crontab</div>
+          <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted)', fontFamily: 'var(--font-sans)', fontSize: 14 }}>
+            No rsync entries found in system crontab
+          </div>
         ) : (
           entries.map((e, i) => (
-            <div key={i} style="background:#0F172A;border-radius:8px;padding:14px 18px;margin:12px 16px;">
-              <span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#34D399;">{e}</span>
+            <div key={i} style={{
+              padding: '14px 20px', margin: '12px 16px',
+              background: 'var(--bg-code)', borderRadius: 'var(--radius-md)',
+            }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: '#34D399' }}>{e}</span>
             </div>
           ))
         )}

@@ -16,6 +16,15 @@ async function login(page, username = "admin", password = "admin") {
   return res.json();
 }
 
+async function csrfHeaders(page) {
+  const res = await page.request.get("/api/auth/csrf");
+  if (!res.ok()) {
+    throw new Error(`CSRF fetch failed: ${res.status()} ${await res.text()}`);
+  }
+  const body = await res.json();
+  return { "X-CSRF-Token": body.csrf_token };
+}
+
 /**
  * Create a job via the API and return the created job object.
  */
@@ -27,11 +36,14 @@ async function createJob(page, overrides = {}) {
     flags: overrides.flags || "-avh",
     ...overrides,
   };
-  const res = await page.request.post("/api/jobs", { data: payload });
+  const res = await page.request.post("/api/jobs", {
+    data: payload,
+    headers: await csrfHeaders(page),
+  });
   if (!res.ok()) {
     throw new Error(`Create job failed: ${res.status()} ${await res.text()}`);
   }
   return res.json();
 }
 
-module.exports = { login, createJob };
+module.exports = { login, csrfHeaders, createJob };

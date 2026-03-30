@@ -1,9 +1,16 @@
 // @ts-check
 const { test, expect } = require("@playwright/test");
 const { login } = require("./helpers");
+const fs = require("fs");
+const path = require("path");
+
+const hasBuiltFrontend = fs.existsSync(
+  path.join(__dirname, "../../static/dist/index.html")
+);
 
 test.describe("UI smoke tests", () => {
   test("unauthenticated user sees login form", async ({ page }) => {
+    test.skip(!hasBuiltFrontend, "built frontend assets are required for UI smoke tests");
     await page.goto("/");
     // The SPA should render a login form or prompt
     await expect(
@@ -12,6 +19,7 @@ test.describe("UI smoke tests", () => {
   });
 
   test("login via UI and see dashboard", async ({ page }) => {
+    test.skip(!hasBuiltFrontend, "built frontend assets are required for UI smoke tests");
     await page.goto("/");
 
     // Fill login form
@@ -26,6 +34,7 @@ test.describe("UI smoke tests", () => {
   });
 
   test("navigation links are present after login", async ({ page }) => {
+    test.skip(!hasBuiltFrontend, "built frontend assets are required for UI smoke tests");
     await page.goto("/");
     await page.getByPlaceholder(/user/i).fill("admin");
     await page.getByPlaceholder(/pass/i).fill("admin");

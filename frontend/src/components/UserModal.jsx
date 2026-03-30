@@ -30,34 +30,67 @@ export function UserModal({ user: editUser, onSaved }) {
     } catch (err) { showToast(err.message, 'error'); }
   };
 
+  const labelStyle = {
+    display: 'block', fontFamily: 'var(--font-sans)', fontSize: 13,
+    fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6,
+  };
+
+  const inputStyle = {
+    width: '100%', padding: '10px 14px', background: 'var(--bg-input)',
+    border: '1px solid var(--border-input)', borderRadius: 'var(--radius-md)',
+    color: 'var(--text-primary)', fontFamily: 'var(--font-sans)', fontSize: 14,
+    outline: 'none', boxSizing: 'border-box',
+  };
+
   return (
-    <div style="position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);z-index:1000;display:flex;align-items:center;justify-content:center;" onClick={e => { if (e.target === e.currentTarget) close(); }}>
-      <div style="background:#0F172A;border:1px solid #1E293B;border-radius:12px;width:100%;max-width:420px;animation:slideUp .25s ease;">
-        <div style="padding:20px 24px;border-bottom:1px solid #1E293B;display:flex;justify-content:space-between;align-items:center;">
-          <span style="font-family:'JetBrains Mono',monospace;font-size:16px;color:#F1F5F9;font-weight:600;">{title}</span>
-          <button onClick={close} style="background:none;border:none;color:#64748B;cursor:pointer;"><Icon name="x" /></button>
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)',
+      zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }} onClick={e => { if (e.target === e.currentTarget) close(); }}>
+      <div style={{
+        background: 'var(--bg-secondary)', border: '1px solid var(--border-primary)',
+        borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: 440,
+        animation: 'slideUp .25s ease', boxShadow: 'var(--shadow-lg)',
+      }}>
+        <div style={{
+          padding: '20px 24px', borderBottom: '1px solid var(--border-primary)',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        }}>
+          <span style={{ fontFamily: 'var(--font-sans)', fontSize: 16, color: 'var(--text-primary)', fontWeight: 600 }}>{title}</span>
+          <button onClick={close} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><Icon name="x" /></button>
         </div>
-        <div style="padding:24px;">
-          <div style="margin-bottom:16px;">
-            <label style="display:block;font-family:'JetBrains Mono',monospace;font-size:11px;text-transform:uppercase;color:#94A3B8;margin-bottom:6px;letter-spacing:1px;">Username</label>
-            <input id="uf-username" type="text" value={editUser?.username || ''} style="width:100%;padding:8px 12px;background:#020617;border:1px solid #1E293B;border-radius:6px;color:#F1F5F9;font-family:'JetBrains Mono',monospace;font-size:13px;outline:none;box-sizing:border-box;" />
+        <div style={{ padding: 24 }}>
+          <div style={{ marginBottom: 16 }}>
+            <label style={labelStyle}>Username</label>
+            <input id="uf-username" type="text" value={editUser?.username || ''} style={inputStyle} />
           </div>
-          <div style="margin-bottom:16px;">
-            <label style="display:block;font-family:'JetBrains Mono',monospace;font-size:11px;text-transform:uppercase;color:#94A3B8;margin-bottom:6px;letter-spacing:1px;">Password{isEdit ? ' (leave blank to keep)' : ''}</label>
-            <input id="uf-password" type="password" style="width:100%;padding:8px 12px;background:#020617;border:1px solid #1E293B;border-radius:6px;color:#F1F5F9;font-family:'JetBrains Mono',monospace;font-size:13px;outline:none;box-sizing:border-box;" />
+          <div style={{ marginBottom: 16 }}>
+            <label style={labelStyle}>Password{isEdit ? ' (leave blank to keep)' : ''}</label>
+            <input id="uf-password" type="password" style={inputStyle} />
           </div>
           <div>
-            <label style="display:block;font-family:'JetBrains Mono',monospace;font-size:11px;text-transform:uppercase;color:#94A3B8;margin-bottom:6px;letter-spacing:1px;">Role</label>
-            <select id="uf-role" style="width:100%;padding:8px 12px;background:#020617;border:1px solid #1E293B;border-radius:6px;color:#F1F5F9;font-family:'JetBrains Mono',monospace;font-size:13px;outline:none;box-sizing:border-box;">
-              <option value="admin" selected={editUser?.role === 'admin'}>admin</option>
-              <option value="rsync" selected={editUser?.role === 'rsync'}>rsync</option>
-              <option value="readonly" selected={editUser?.role === 'readonly'}>readonly</option>
+            <label style={labelStyle}>Role</label>
+            <select id="uf-role" style={inputStyle}>
+              <option value="admin" selected={editUser?.role === 'admin'}>Admin</option>
+              <option value="rsync" selected={editUser?.role === 'rsync'}>Rsync</option>
+              <option value="readonly" selected={editUser?.role === 'readonly'}>Read Only</option>
             </select>
           </div>
         </div>
-        <div style="padding:16px 24px;border-top:1px solid #1E293B;display:flex;justify-content:flex-end;gap:10px;">
-          <button onClick={close} style="padding:8px 16px;background:none;border:1px solid #334155;border-radius:8px;color:#94A3B8;font-family:'JetBrains Mono',monospace;font-size:12px;cursor:pointer;">Cancel</button>
-          <button onClick={save} style="padding:8px 16px;background:#3B82F6;border:none;border-radius:8px;color:#fff;font-family:'JetBrains Mono',monospace;font-size:12px;cursor:pointer;">{isEdit ? 'Save' : 'Create User'}</button>
+        <div style={{
+          padding: '16px 24px', borderTop: '1px solid var(--border-primary)',
+          display: 'flex', justifyContent: 'flex-end', gap: 10,
+        }}>
+          <button onClick={close} style={{
+            padding: '8px 18px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-input)',
+            borderRadius: 'var(--radius-md)', color: 'var(--text-secondary)',
+            fontFamily: 'var(--font-sans)', fontSize: 13, cursor: 'pointer', fontWeight: 500,
+          }}>Cancel</button>
+          <button onClick={save} style={{
+            padding: '8px 18px', background: 'var(--accent)', border: 'none',
+            borderRadius: 'var(--radius-md)', color: '#fff',
+            fontFamily: 'var(--font-sans)', fontSize: 13, cursor: 'pointer', fontWeight: 600,
+          }}>{isEdit ? 'Save' : 'Create User'}</button>
         </div>
       </div>
     </div>

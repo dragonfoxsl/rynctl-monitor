@@ -1,6 +1,6 @@
 // @ts-check
 const { test, expect } = require("@playwright/test");
-const { login } = require("./helpers");
+const { login, csrfHeaders } = require("./helpers");
 
 test.describe("Authentication API", () => {
   test("login with valid credentials returns token and user info", async ({
@@ -41,7 +41,9 @@ test.describe("Authentication API", () => {
 
   test("POST /api/auth/logout clears session", async ({ page }) => {
     await login(page);
-    const logoutRes = await page.request.post("/api/auth/logout");
+    const logoutRes = await page.request.post("/api/auth/logout", {
+      headers: await csrfHeaders(page),
+    });
     expect(logoutRes.ok()).toBeTruthy();
 
     // Session should now be invalid

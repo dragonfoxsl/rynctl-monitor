@@ -20,29 +20,74 @@ export function Login() {
   };
 
   return (
-    <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#020617;">
-      <div style="background:#0F172A;border:1px solid #1E293B;border-radius:12px;padding:40px;width:100%;max-width:400px;">
-        <div style="text-align:center;margin-bottom:32px;">
-          <div style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:28px;margin-bottom:8px;">
-            <span style="color:#3B82F6;">R~</span><span style="color:#F1F5F9;">RYNCTL</span><span style="color:#64748B;">MONITOR</span>
+    <div style={{
+      minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: 'var(--bg-primary)',
+    }}>
+      <div style={{
+        background: 'var(--bg-secondary)', border: '1px solid var(--border-primary)',
+        borderRadius: 'var(--radius-xl)', padding: 40, width: '100%', maxWidth: 420,
+        boxShadow: 'var(--shadow-lg)',
+      }}>
+        <div style={{ textAlign: 'center', marginBottom: 32 }}>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+            <div style={{
+              width: 48, height: 48, borderRadius: 'var(--radius-lg)',
+              background: 'var(--accent)', display: 'flex', alignItems: 'center',
+              justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 22,
+              fontFamily: 'var(--font-mono)',
+            }}>R</div>
           </div>
-          <div style="font-family:'JetBrains Mono',monospace;font-size:13px;">
-            <span style="color:#3B82F6;">$</span> <span style="color:#64748B;">authenticate to manage rsync jobs</span>
+          <div style={{ fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 22, color: 'var(--text-primary)', marginBottom: 4 }}>
+            Rsync Monitor
+          </div>
+          <div style={{ fontFamily: 'var(--font-sans)', fontSize: 14, color: 'var(--text-muted)' }}>
+            Sign in to manage your sync jobs
           </div>
         </div>
         <form onSubmit={handleSubmit}>
-          <div style="margin-bottom:16px;">
-            <label style="display:block;font-family:'JetBrains Mono',monospace;font-size:11px;text-transform:uppercase;color:#94A3B8;margin-bottom:6px;letter-spacing:1px;">Username</label>
-            <input id="login-user" type="text" autocomplete="username" style="width:100%;padding:10px 14px;background:#020617;border:1px solid #1E293B;border-radius:8px;color:#F1F5F9;font-family:'JetBrains Mono',monospace;font-size:14px;outline:none;box-sizing:border-box;" />
+          <div style={{ marginBottom: 16 }}>
+            <label style={{
+              display: 'block', fontFamily: 'var(--font-sans)', fontSize: 13,
+              fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6,
+            }}>Username</label>
+            <input id="login-user" type="text" autocomplete="username" placeholder="Enter username" style={{
+              width: '100%', padding: '11px 14px', background: 'var(--bg-input)',
+              border: '1px solid var(--border-input)', borderRadius: 'var(--radius-md)',
+              color: 'var(--text-primary)', fontFamily: 'var(--font-sans)', fontSize: 14,
+              outline: 'none', boxSizing: 'border-box',
+            }} />
           </div>
-          <div style="margin-bottom:24px;">
-            <label style="display:block;font-family:'JetBrains Mono',monospace;font-size:11px;text-transform:uppercase;color:#94A3B8;margin-bottom:6px;letter-spacing:1px;">Password</label>
-            <input id="login-pass" type="password" autocomplete="current-password" style="width:100%;padding:10px 14px;background:#020617;border:1px solid #1E293B;border-radius:8px;color:#F1F5F9;font-family:'JetBrains Mono',monospace;font-size:14px;outline:none;box-sizing:border-box;" />
+          <div style={{ marginBottom: 24 }}>
+            <label style={{
+              display: 'block', fontFamily: 'var(--font-sans)', fontSize: 13,
+              fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6,
+            }}>Password</label>
+            <input id="login-pass" type="password" autocomplete="current-password" placeholder="Enter password" style={{
+              width: '100%', padding: '11px 14px', background: 'var(--bg-input)',
+              border: '1px solid var(--border-input)', borderRadius: 'var(--radius-md)',
+              color: 'var(--text-primary)', fontFamily: 'var(--font-sans)', fontSize: 14,
+              outline: 'none', boxSizing: 'border-box',
+            }} />
           </div>
-          {error && <div style="color:#F87171;font-size:12px;font-family:'JetBrains Mono',monospace;margin-bottom:12px;">{error}</div>}
-          <button type="submit" style="width:100%;padding:12px;background:#3B82F6;border:none;border-radius:8px;color:#fff;font-family:'JetBrains Mono',monospace;font-size:13px;text-transform:uppercase;cursor:pointer;font-weight:600;letter-spacing:1px;">Login</button>
+          {error && (
+            <div style={{
+              padding: '10px 14px', borderRadius: 'var(--radius-md)',
+              background: 'var(--error-light)', color: 'var(--error-text)',
+              border: '1px solid var(--error-border)', fontSize: 13,
+              fontFamily: 'var(--font-sans)', marginBottom: 16,
+            }}>{error}</div>
+          )}
+          <button type="submit" style={{
+            width: '100%', padding: 12, background: 'var(--accent)', border: 'none',
+            borderRadius: 'var(--radius-md)', color: '#fff', fontFamily: 'var(--font-sans)',
+            fontSize: 14, cursor: 'pointer', fontWeight: 600, boxShadow: 'var(--shadow-sm)',
+          }}>Sign In</button>
         </form>
-        <div style="text-align:center;margin-top:20px;font-size:11px;color:#475569;font-family:'JetBrains Mono',monospace;">Default: admin / admin</div>
+        <div style={{
+          textAlign: 'center', marginTop: 20, fontSize: 12,
+          color: 'var(--text-muted)', fontFamily: 'var(--font-sans)',
+        }}>Default credentials: admin / admin</div>
       </div>
     </div>
   );

@@ -3,14 +3,16 @@ Job CRUD routes — list, create, update, delete, run, preview, and per-job runs
 Includes tags support and retry configuration.
 """
 
-import threading
-
 from fastapi import APIRouter, HTTPException, Request
 
+from backend.config import JOB_TIMEOUT_SECS
 from backend.database import get_db, log_audit
-from backend.rsync import build_rsync_command, run_rsync_job
+from backend.job_runner import enqueue_job
+from backend.models import JobPayload
+from backend.rsync import build_rsync_command, job_has_running_run
 from backend.scheduler import schedule_job, unschedule_job
 from backend.security import require_auth, require_role
+from backend.validation import validate_cron_expression
 
 router = APIRouter(prefix="/api/jobs", tags=["jobs"])
 
@@ -18,7 +20,7 @@ router = APIRouter(prefix="/api/jobs", tags=["jobs"])
 _UPDATABLE = [
     "name", "source", "destination", "remote_host", "ssh_port", "ssh_key",
     "flags", "exclude_patterns", "bandwidth_limit", "custom_flags", "tags",
-    "schedule_cron", "schedule_enabled", "retry_max", "retry_delay",
+    "schedule_cron", "schedule_enabled", "retry_max", "retry_delay", "max_runtime",
 ]
 
 
@@ -31,6 +33,7 @@ async def list_jobs(request: Request, tag: str = None):
         rows = conn.execute("""
             SELECT j.*,
                    (SELECT status FROM job_runs WHERE job_id = j.id ORDER BY id DESC LIMIT 1) AS last_status,
+                   (SELECT started_at FROM job_runs WHERE job_id = j.id ORDER BY id DESC LIMIT 1) AS last_run,
                    (SELECT COUNT(*) FROM job_runs WHERE job_id = j.id) AS total_runs,
                    (SELECT COALESCE(SUM(bytes_transferred), 0) FROM job_runs WHERE job_id = j.id) AS total_data
             FROM jobs j ORDER BY j.id DESC
@@ -66,10 +69,11 @@ async def list_tags(request: Request):
 
 
 @router.post("")
-async def create_job(request: Request):
+async def create_job(payload: JobPayload, request: Request):
     """Create a new rsync job. Requires admin or rsync role."""
     user = require_role(request, "admin", "rsync")
-    body = await request.json()
+    body = payload.model_dump()
+    body["schedule_cron"] = validate_cron_expression(body.get("schedule_cron", ""))
 
     for f in ["name", "source", "destination"]:
         if not body.get(f):
@@ -80,8 +84,8 @@ async def create_job(request: Request):
         cur = conn.execute(
             """INSERT INTO jobs (name, source, destination, remote_host, ssh_port, ssh_key,
                    flags, exclude_patterns, bandwidth_limit, custom_flags, tags,
-                   schedule_cron, schedule_enabled, retry_max, retry_delay, created_by)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                   schedule_cron, schedule_enabled, retry_max, retry_delay, max_runtime, created_by)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (
                 body["name"], body["source"], body["destination"],
                 body.get("remote_host", ""), body.get("ssh_port", ""),
@@ -90,6 +94,7 @@ async def create_job(request: Request):
                 body.get("custom_flags", ""), body.get("tags", ""),
                 body.get("schedule_cron", ""), body.get("schedule_enabled", 0),
                 body.get("retry_max", 0), body.get("retry_delay", 30),
+                body.get("max_runtime", JOB_TIMEOUT_SECS),
                 user["id"],
             ),
         )
@@ -121,10 +126,12 @@ async def get_job(job_id: int, request: Request):
 
 
 @router.put("/{job_id}")
-async def update_job(job_id: int, request: Request):
+async def update_job(job_id: int, payload: JobPayload, request: Request):
     """Update job fields and reschedule if cron settings changed."""
     user = require_role(request, "admin", "rsync")
-    body = await request.json()
+    body = payload.model_dump(exclude_unset=True)
+    if "schedule_cron" in body:
+        body["schedule_cron"] = validate_cron_expression(body.get("schedule_cron", ""))
 
     conn = get_db()
     try:
@@ -154,6 +161,7 @@ async def update_job(job_id: int, request: Request):
             unschedule_job(job_id)
 
         job = conn.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
+        log_audit(user, "job_update", "job", str(job_id), f"Updated job '{job['name']}'")
         return dict(job)
     finally:
         conn.close()
@@ -189,10 +197,13 @@ async def run_job(job_id: int, request: Request):
     finally:
         conn.close()
 
-    t = threading.Thread(target=run_rsync_job, args=(job_id,), daemon=True)
-    t.start()
+    state = enqueue_job(job_id, source="manual")
+    if state == "running":
+        raise HTTPException(status_code=409, detail="Job is already running")
+    if state == "queued":
+        raise HTTPException(status_code=409, detail="Job is already queued")
     log_audit(user, "job_run", "job", str(job_id), f"Manual run of '{job['name']}'")
-    return {"ok": True, "message": "Job started"}
+    return {"ok": True, "message": "Job queued"}
 
 
 @router.get("/{job_id}/preview")

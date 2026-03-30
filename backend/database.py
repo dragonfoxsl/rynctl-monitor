@@ -13,12 +13,16 @@ from backend.security import hash_password
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Paths — /data in Docker, ./data locally
+# Paths — honor explicit RYNCTL_DATA_DIR, otherwise prefer /data in Docker
+# and fall back to ./data locally.
 # ---------------------------------------------------------------------------
 
-DATA_DIR = Path(os.environ.get("RYNCTL_DATA_DIR", "/data"))
-if not DATA_DIR.exists():
-    DATA_DIR = Path(__file__).resolve().parent.parent / "data"
+_configured_data_dir = os.environ.get("RYNCTL_DATA_DIR")
+if _configured_data_dir:
+    DATA_DIR = Path(_configured_data_dir)
+else:
+    default_data_dir = Path("/data")
+    DATA_DIR = default_data_dir if default_data_dir.exists() else Path(__file__).resolve().parent.parent / "data"
 
 LOGS_DIR = DATA_DIR / "logs"
 DB_PATH = DATA_DIR / "rynctl.db"
@@ -51,7 +55,10 @@ def init_db():
         _migrate_column(conn, "jobs", "tags", "TEXT DEFAULT ''")
         _migrate_column(conn, "jobs", "retry_max", "INTEGER DEFAULT 0")
         _migrate_column(conn, "jobs", "retry_delay", "INTEGER DEFAULT 30")
+        _migrate_column(conn, "jobs", "max_runtime", "INTEGER DEFAULT 0")
         _migrate_column(conn, "job_runs", "attempt", "INTEGER DEFAULT 1")
+        _migrate_column(conn, "users", "failed_login_attempts", "INTEGER DEFAULT 0")
+        _migrate_column(conn, "users", "lockout_until", "TEXT")
 
         # Seed default admin (admin/admin) when DB is empty
         row = conn.execute("SELECT COUNT(*) AS c FROM users").fetchone()

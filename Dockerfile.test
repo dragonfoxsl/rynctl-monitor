@@ -1,0 +1,47 @@
+# Stage 1: Build frontend with Vite + Preact
+FROM node:20-slim AS frontend
+WORKDIR /build
+COPY frontend/package.json frontend/package-lock.json* ./
+RUN npm ci --legacy-peer-deps
+COPY frontend/ .
+RUN npm run build
+
+# Stage 2: Shared Python base for backend tests
+FROM python:3.12-slim AS python-base
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends rsync openssh-client cron && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY backend/ backend/
+COPY static/ static/
+COPY run.py .
+
+# Stage 3: Backend test runner
+FROM python-base AS backend-tests
+COPY requirements-dev.txt pytest.ini ./
+RUN pip install --no-cache-dir -r requirements-dev.txt
+COPY tests/unit tests/unit
+CMD ["python", "-m", "pytest"]
+
+# Stage 4: Frontend build runner that can write dist to a bind mount
+FROM node:20-slim AS frontend-build
+WORKDIR /workspace/frontend
+COPY frontend/package.json frontend/package-lock.json* ./
+RUN npm ci --legacy-peer-deps
+COPY frontend/ ./
+CMD ["npm", "run", "build"]
+
+# Stage 5: Playwright test runner
+FROM mcr.microsoft.com/playwright:v1.49.0-noble AS e2e-tests
+WORKDIR /workspace
+COPY tests/package.json ./tests/package.json
+RUN cd tests && npm install
+COPY tests ./tests
+COPY --from=frontend /static/dist ./static/dist
+CMD ["sh", "-lc", "cd tests && npx playwright test"]

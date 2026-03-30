@@ -5,6 +5,7 @@ User management routes — CRUD for admin users.
 from fastapi import APIRouter, HTTPException, Request
 
 from backend.database import get_db, log_audit
+from backend.models import UserCreateRequest, UserUpdateRequest
 from backend.security import hash_password, require_role, validate_password_strength
 
 router = APIRouter(prefix="/api/users", tags=["users"])
@@ -25,14 +26,13 @@ async def list_users(request: Request):
 
 
 @router.post("")
-async def create_user(request: Request):
+async def create_user(payload: UserCreateRequest, request: Request):
     """Create a new user with a given role (admin only)."""
     user = require_role(request, "admin")
-    body = await request.json()
 
-    username = body.get("username", "").strip()
-    password = body.get("password", "")
-    role = body.get("role", "readonly")
+    username = payload.username
+    password = payload.password
+    role = payload.role
 
     if not username or not password:
         raise HTTPException(status_code=400, detail="username and password required")
@@ -67,10 +67,10 @@ async def create_user(request: Request):
 
 
 @router.put("/{user_id}")
-async def update_user(user_id: int, request: Request):
+async def update_user(user_id: int, payload: UserUpdateRequest, request: Request):
     """Update a user's password, role, or username (admin only)."""
     user = require_role(request, "admin")
-    body = await request.json()
+    body = payload.model_dump(exclude_unset=True)
 
     conn = get_db()
     try:
@@ -93,6 +93,12 @@ async def update_user(user_id: int, request: Request):
             conn.execute("UPDATE users SET role = ? WHERE id = ?", (body["role"], user_id))
 
         if "username" in body and body["username"]:
+            duplicate = conn.execute(
+                "SELECT id FROM users WHERE username = ? AND id != ?",
+                (body["username"], user_id),
+            ).fetchone()
+            if duplicate:
+                raise HTTPException(status_code=409, detail="Username already exists")
             conn.execute(
                 "UPDATE users SET username = ? WHERE id = ?", (body["username"], user_id)
             )

@@ -4,18 +4,19 @@ Allows downloading a snapshot and uploading a replacement.
 """
 
 import shutil
-from datetime import datetime
 
 from fastapi import APIRouter, HTTPException, Request, UploadFile, File
 from fastapi.responses import FileResponse
 
 from backend.database import DB_PATH, DATA_DIR
 from backend.security import require_role
+from backend.time_utils import utc_now
 
 router = APIRouter(prefix="/api/backup", tags=["backup"])
 
 
 @router.get("/download")
+@router.get("")
 async def download_backup(request: Request):
     """Download a copy of the current SQLite database (admin only)."""
     require_role(request, "admin")
@@ -23,7 +24,7 @@ async def download_backup(request: Request):
         raise HTTPException(status_code=404, detail="Database file not found")
 
     # Copy to a temp location to avoid locking issues
-    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    timestamp = utc_now().strftime("%Y%m%d_%H%M%S")
     backup_path = DATA_DIR / f"rynctl_backup_{timestamp}.db"
     shutil.copy2(str(DB_PATH), str(backup_path))
 
@@ -47,7 +48,7 @@ async def restore_backup(request: Request, file: UploadFile = File(...)):
 
     # Safety backup of current DB
     if DB_PATH.exists():
-        safety = DATA_DIR / f"rynctl_pre_restore_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.db"
+        safety = DATA_DIR / f"rynctl_pre_restore_{utc_now().strftime('%Y%m%d_%H%M%S')}.db"
         shutil.copy2(str(DB_PATH), str(safety))
 
     # Write uploaded file

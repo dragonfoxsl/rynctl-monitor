@@ -3,15 +3,18 @@ Job import/export, SSH connection test, and file browser routes.
 """
 
 import os
-import json
 import subprocess
 import shlex
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
 
+from backend.config import JOB_TIMEOUT_SECS
 from backend.database import get_db, log_audit
+from backend.models import BrowseRequest, JobsImportRequest, SSHTestRequest
 from backend.security import require_auth, require_role
+from backend.scheduler import schedule_job
+from backend.validation import normalize_local_browse_path, validate_cron_expression
 
 router = APIRouter(prefix="/api", tags=["transfer"])
 
@@ -45,24 +48,21 @@ async def export_jobs(request: Request):
 
 
 @router.post("/jobs/import")
-async def import_jobs(request: Request):
+async def import_jobs(payload: JobsImportRequest, request: Request):
     """
     Import jobs from a JSON payload (admin only).
     Expects { "jobs": [...] } format from the export endpoint.
     Skips jobs whose name already exists.
     """
     user = require_role(request, "admin")
-    body = await request.json()
-    jobs_data = body.get("jobs", [])
-
-    if not isinstance(jobs_data, list):
-        raise HTTPException(status_code=400, detail="'jobs' must be an array")
+    jobs_data = payload.jobs
 
     conn = get_db()
     created = 0
     skipped = 0
     try:
-        for j in jobs_data:
+        for job_payload in jobs_data:
+            j = job_payload.model_dump()
             name = j.get("name", "").strip()
             if not name or not j.get("source") or not j.get("destination"):
                 skipped += 1
@@ -74,20 +74,26 @@ async def import_jobs(request: Request):
                 skipped += 1
                 continue
 
+            j["schedule_cron"] = validate_cron_expression(j.get("schedule_cron", ""))
             conn.execute(
                 """INSERT INTO jobs (name, source, destination, remote_host, ssh_port, ssh_key,
-                       flags, exclude_patterns, bandwidth_limit, custom_flags,
-                       schedule_cron, schedule_enabled, created_by)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                       flags, exclude_patterns, bandwidth_limit, custom_flags, tags,
+                       schedule_cron, schedule_enabled, retry_max, retry_delay, max_runtime, created_by)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (
                     name, j["source"], j["destination"],
                     j.get("remote_host", ""), j.get("ssh_port", ""),
                     j.get("ssh_key", ""), j.get("flags", "-avh"),
                     j.get("exclude_patterns", ""), j.get("bandwidth_limit", ""),
-                    j.get("custom_flags", ""), j.get("schedule_cron", ""),
-                    j.get("schedule_enabled", 0), user["id"],
+                    j.get("custom_flags", ""), j.get("tags", ""),
+                    j.get("schedule_cron", ""), j.get("schedule_enabled", 0),
+                    j.get("retry_max", 0), j.get("retry_delay", 30),
+                    j.get("max_runtime", JOB_TIMEOUT_SECS), user["id"],
                 ),
             )
+            job_id = conn.execute("SELECT last_insert_rowid() AS id").fetchone()["id"]
+            if j.get("schedule_enabled") and j.get("schedule_cron"):
+                schedule_job(job_id, j["schedule_cron"])
             created += 1
 
         conn.commit()
@@ -103,20 +109,18 @@ async def import_jobs(request: Request):
 # ---------------------------------------------------------------------------
 
 @router.post("/ssh/test")
-async def test_ssh(request: Request):
+async def test_ssh(payload: SSHTestRequest, request: Request):
     """
     Test SSH connectivity to a remote host.
     Expects { host, port?, key? } — runs `ssh -o ConnectTimeout=5 host echo ok`.
     """
     require_role(request, "admin", "rsync")
-    body = await request.json()
-
-    host = body.get("host", "").strip()
+    host = payload.host.strip()
     if not host:
         raise HTTPException(status_code=400, detail="'host' is required")
 
-    port = body.get("port", "22")
-    key = body.get("key", "")
+    port = payload.port
+    key = payload.key
 
     cmd = ["ssh", "-o", "StrictHostKeyChecking=accept-new", "-o", "ConnectTimeout=5"]
     if port and port != "22":
@@ -146,7 +150,7 @@ async def test_ssh(request: Request):
 # ---------------------------------------------------------------------------
 
 @router.post("/browse")
-async def browse_path(request: Request):
+async def browse_path(payload: BrowseRequest, request: Request):
     """
     List directory contents for the file browser.
     Expects { path, host?, port?, key? }.
@@ -154,12 +158,10 @@ async def browse_path(request: Request):
     Otherwise lists local server directory.
     """
     require_role(request, "admin", "rsync")
-    body = await request.json()
-
-    path = body.get("path", "/").strip() or "/"
-    host = body.get("host", "").strip()
-    port = body.get("port", "22")
-    key = body.get("key", "")
+    path = payload.path or "/"
+    host = payload.host
+    port = payload.port
+    key = payload.key
 
     if host:
         # Remote listing via SSH
@@ -187,6 +189,7 @@ async def browse_path(request: Request):
             return {"ok": False, "message": str(exc), "entries": [], "path": path}
     else:
         # Local listing
+        path = normalize_local_browse_path(path)
         if not os.path.isdir(path):
             return {"ok": False, "message": f"Not a directory: {path}",
                     "entries": [], "path": path}

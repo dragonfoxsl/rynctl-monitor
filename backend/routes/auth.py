@@ -2,12 +2,14 @@
 Authentication routes — login, logout, current user, CSRF token.
 """
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
 
+from backend.config import LOCKOUT_MINUTES, MAX_LOGIN_ATTEMPTS, SESSION_COOKIE_MAX_AGE
 from backend.database import get_db, log_audit
+from backend.models import LoginRequest
 from backend.security import (
     create_session,
     get_csrf_token_for_session,
@@ -16,71 +18,60 @@ from backend.security import (
     verify_password,
     _get_session_token_from_request,
 )
+from backend.time_utils import format_db_timestamp, parse_db_timestamp, utc_now
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
-
-# ---------------------------------------------------------------------------
-# Account lockout state (in-memory)
-# ---------------------------------------------------------------------------
-_failed_attempts: dict[str, dict] = {}
-_MAX_ATTEMPTS = 5
-_LOCKOUT_MINUTES = 15
-
-
-def _check_lockout(username: str):
-    """Raise 403 if the account is currently locked out."""
-    info = _failed_attempts.get(username)
-    if not info:
-        return
-    if info.get("locked_until") and datetime.utcnow() < info["locked_until"]:
-        remaining = int((info["locked_until"] - datetime.utcnow()).total_seconds() // 60) + 1
-        raise HTTPException(
-            status_code=403,
-            detail=f"Account locked due to too many failed attempts. Try again in {remaining} minute(s).",
-        )
-    # Lock period expired — reset
-    if info.get("locked_until") and datetime.utcnow() >= info["locked_until"]:
-        _failed_attempts.pop(username, None)
-
-
-def _record_failure(username: str):
-    """Record a failed login attempt; lock after threshold."""
-    info = _failed_attempts.setdefault(username, {"count": 0, "locked_until": None})
-    info["count"] += 1
-    if info["count"] >= _MAX_ATTEMPTS:
-        info["locked_until"] = datetime.utcnow() + timedelta(minutes=_LOCKOUT_MINUTES)
-
-
-def _clear_failures(username: str):
-    _failed_attempts.pop(username, None)
-
 
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
 
 @router.post("/login")
-async def login(request: Request):
-    body = await request.json()
-    username = body.get("username", "")
-    password = body.get("password", "")
-
-    _check_lockout(username)
+async def login(payload: LoginRequest):
+    username = payload.username
+    password = payload.password
 
     conn = get_db()
     try:
         user = conn.execute(
             "SELECT * FROM users WHERE username = ?", (username,)
         ).fetchone()
-        if not user or not verify_password(password, user["password_hash"]):
-            _record_failure(username)
-            raise HTTPException(status_code=401, detail="Invalid credentials")
+        if user and user["lockout_until"]:
+            locked_until = parse_db_timestamp(user["lockout_until"])
+            if locked_until > utc_now():
+                remaining = int((locked_until - utc_now()).total_seconds() // 60) + 1
+                raise HTTPException(
+                    status_code=403,
+                    detail=f"Account locked due to too many failed attempts. Try again in {remaining} minute(s).",
+                )
+            conn.execute(
+                "UPDATE users SET failed_login_attempts = 0, lockout_until = NULL WHERE id = ?",
+                (user["id"],),
+            )
+            conn.commit()
+            user = conn.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
 
-        _clear_failures(username)
+        if not user or not verify_password(password, user["password_hash"]):
+            if user:
+                failed_attempts = (user["failed_login_attempts"] or 0) + 1
+                lockout_until = None
+                if failed_attempts >= MAX_LOGIN_ATTEMPTS:
+                    lockout_until = format_db_timestamp(
+                        utc_now() + timedelta(minutes=LOCKOUT_MINUTES)
+                    )
+                conn.execute(
+                    "UPDATE users SET failed_login_attempts = ?, lockout_until = ? WHERE id = ?",
+                    (failed_attempts, lockout_until, user["id"]),
+                )
+                conn.commit()
+            raise HTTPException(status_code=401, detail="Invalid credentials")
 
         token = create_session(user["id"])
         conn.execute(
-            "UPDATE users SET last_login = datetime('now') WHERE id = ?", (user["id"],)
+            """UPDATE users
+               SET last_login = datetime('now'), failed_login_attempts = 0, lockout_until = NULL
+               WHERE id = ?""",
+            (user["id"],),
         )
         conn.commit()
     finally:
@@ -94,7 +85,7 @@ async def login(request: Request):
         "role": user["role"],
     })
     response.set_cookie(
-        "session_token", token, httponly=True, samesite="lax", max_age=7 * 86400
+        "session_token", token, httponly=True, samesite="lax", max_age=SESSION_COOKIE_MAX_AGE
     )
     return response
 

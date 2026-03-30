@@ -1,0 +1,27 @@
+services:
+  rynctl-monitor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: rynctl-monitor
+    ports:
+      - "${RYNCTL_PORT:-8080}:8080"
+    volumes:
+      - rynctl-data:/data
+      # Mount host directories you want to sync (uncomment and edit):
+      - /home/bisina/Documents/projects/rynctl-monitor/tests/data/destination:/data/dest
+      - /home/bisina/Documents/projects/rynctl-monitor/tests/data/source:/data/sour
+      # - /home/data:/home/data:ro
+      # - /var/www:/var/www:ro
+      # - /backups:/backups
+      # Mount SSH keys for remote rsync (uncomment and edit):
+      # - ~/.ssh/id_rsa:/root/.ssh/id_rsa:ro
+      # - ~/.ssh/known_hosts:/root/.ssh/known_hosts:ro
+    environment:
+      - RYNCTL_PORT=8080
+      - RYNCTL_SECRET=${RYNCTL_SECRET:-change-me-to-a-random-secret}
+    restart: unless-stopped
+
+volumes:
+  rynctl-data:

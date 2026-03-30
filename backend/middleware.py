@@ -10,6 +10,7 @@ from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from backend.config import RATE_LIMIT_RPM
+from backend.security import get_csrf_token_for_session
 
 logger = logging.getLogger(__name__)
 
@@ -71,3 +72,39 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             duration_ms,
         )
         return response
+
+
+class CSRFMiddleware(BaseHTTPMiddleware):
+    """
+    Enforce CSRF tokens for state-changing API requests that rely on cookie auth.
+    """
+
+    SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
+    EXEMPT_PATHS = {
+        "/api/auth/login",
+        "/api/health",
+        "/api/metrics",
+        "/metrics",
+    }
+
+    async def dispatch(self, request: Request, call_next):
+        if not request.url.path.startswith("/api"):
+            return await call_next(request)
+
+        if request.method in self.SAFE_METHODS or request.url.path in self.EXEMPT_PATHS:
+            return await call_next(request)
+
+        session_token = request.cookies.get("session_token")
+        if not session_token:
+            return await call_next(request)
+
+        expected = get_csrf_token_for_session(session_token)
+        provided = request.headers.get("X-CSRF-Token", "")
+        if not expected or provided != expected:
+            return Response(
+                content='{"detail":"CSRF token missing or invalid"}',
+                status_code=403,
+                media_type="application/json",
+            )
+
+        return await call_next(request)

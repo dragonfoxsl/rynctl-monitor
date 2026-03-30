@@ -39,12 +39,19 @@ SESSION_EXPIRY_DAYS = int(os.environ.get("RYNCTL_SESSION_DAYS", 7))
 MAX_LOGIN_ATTEMPTS = int(os.environ.get("RYNCTL_MAX_LOGIN_ATTEMPTS", 5))
 LOCKOUT_MINUTES = int(os.environ.get("RYNCTL_LOCKOUT_MINUTES", 15))
 RATE_LIMIT_RPM = int(os.environ.get("RYNCTL_RATE_LIMIT_RPM", 120))
+SESSION_COOKIE_MAX_AGE = SESSION_EXPIRY_DAYS * 86400
+BROWSE_ROOTS = [
+    str(Path(p).expanduser().resolve())
+    for p in os.environ.get("RYNCTL_BROWSE_ROOTS", "").split(",")
+    if p.strip()
+]
 
 # ---------------------------------------------------------------------------
 # Retry & Notifications
 # ---------------------------------------------------------------------------
 RETRY_MAX = int(os.environ.get("RYNCTL_RETRY_MAX", 0))          # 0 = disabled
 RETRY_DELAY_SECS = int(os.environ.get("RYNCTL_RETRY_DELAY", 30))
+JOB_TIMEOUT_SECS = int(os.environ.get("RYNCTL_JOB_TIMEOUT", 0))  # 0 = disabled
 WEBHOOK_URL = os.environ.get("RYNCTL_WEBHOOK_URL", "")          # POST on failure
 WEBHOOK_EVENTS = os.environ.get("RYNCTL_WEBHOOK_EVENTS", "failure")  # failure,success,all
 

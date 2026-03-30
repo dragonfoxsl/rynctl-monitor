@@ -14,13 +14,14 @@ export function showToast(message, type = 'success') {
 export function ToastContainer() {
   if (toasts.value.length === 0) return null;
   return (
-    <div style="position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px;">
+    <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 9999, display: 'flex', flexDirection: 'column', gap: 8 }}>
       {toasts.value.map(t => (
         <div key={t.id} style={{
-          padding: '12px 20px', borderRadius: 8,
-          fontFamily: "'JetBrains Mono',monospace", fontSize: 13,
+          padding: '12px 20px', borderRadius: 'var(--radius-md)',
+          fontFamily: 'var(--font-sans)', fontSize: 14, fontWeight: 500,
           color: '#fff', minWidth: 240, animation: 'slideInRight .3s ease',
-          background: t.type === 'error' ? '#DC2626' : '#16A34A',
+          background: t.type === 'error' ? 'var(--error)' : 'var(--success)',
+          boxShadow: 'var(--shadow-lg)',
         }}>{t.message}</div>
       ))}
     </div>

@@ -13,6 +13,7 @@ router = APIRouter(tags=["metrics"])
 
 
 @router.get("/metrics")
+@router.get("/api/metrics")
 async def prometheus_metrics():
     """Return metrics in Prometheus text exposition format."""
     if not METRICS_ENABLED:
