@@ -4,6 +4,7 @@ services:
       context: .
       dockerfile: Dockerfile
       target: production
+      no_cache: true
     container_name: rynctl-monitor
     ports:
       - "${RYNCTL_PORT:-8080}:8080"

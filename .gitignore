@@ -29,3 +29,6 @@ static/dist/
 # OS
 .DS_Store
 Thumbs.db
+
+CLAUDE.md
+docs/ROADMAP.md
