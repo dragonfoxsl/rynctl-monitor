@@ -3,6 +3,7 @@ Password hashing (PBKDF2-SHA256) and session-based authentication helpers.
 """
 
 import hashlib
+import hmac
 import re
 import secrets
 from datetime import timedelta
@@ -10,7 +11,7 @@ from typing import Optional, Tuple
 
 from fastapi import HTTPException, Request
 
-from backend.config import SESSION_EXPIRY_DAYS
+from backend.config import SECRET, SESSION_EXPIRY_DAYS
 from backend.time_utils import format_db_timestamp, parse_db_timestamp, utc_now
 
 
@@ -27,7 +28,7 @@ def verify_password(password: str, stored: str) -> bool:
     try:
         salt_hex, _ = stored.split(":", 1)
         salt = bytes.fromhex(salt_hex)
-        return hash_password(password, salt) == stored
+        return secrets.compare_digest(hash_password(password, salt), stored)
     except Exception:
         return False
 
@@ -43,6 +44,30 @@ def validate_password_strength(password: str) -> Tuple[bool, str]:
     if not re.search(r"[0-9]", password):
         return False, "Password must contain at least one digit"
     return True, "Password meets complexity requirements"
+
+
+def _token_signature(token: str) -> str:
+    """HMAC-SHA256 signature of a session token, keyed by the server secret."""
+    return hmac.new(SECRET.encode(), token.encode(), hashlib.sha256).hexdigest()
+
+
+def sign_token(token: str) -> str:
+    """Return the cookie value 'token.signature' for a raw session token."""
+    return f"{token}.{_token_signature(token)}"
+
+
+def unsign_token(value: Optional[str]) -> Optional[str]:
+    """Validate a signed cookie value and return the raw token, or None.
+
+    Rejects unsigned values (e.g. a token leaked straight from the database)
+    and values with a tampered signature.
+    """
+    if not value or "." not in value:
+        return None
+    token, _, signature = value.rpartition(".")
+    if not token or not secrets.compare_digest(signature, _token_signature(token)):
+        return None
+    return token
 
 
 def create_session(user_id: int) -> str:
@@ -69,7 +94,7 @@ def get_current_user(request: Request) -> Optional[dict]:
     """Extract and validate the session from cookies or Authorization header."""
     from backend.database import get_db
 
-    token = request.cookies.get("session_token")
+    token = unsign_token(request.cookies.get("session_token"))
     if not token:
         auth = request.headers.get("Authorization", "")
         if auth.startswith("Bearer "):
@@ -133,7 +158,7 @@ def get_csrf_token_for_session(session_token: str) -> Optional[str]:
 
 def _get_session_token_from_request(request: Request) -> Optional[str]:
     """Extract the session token from cookies or Authorization header."""
-    token = request.cookies.get("session_token")
+    token = unsign_token(request.cookies.get("session_token"))
     if not token:
         auth = request.headers.get("Authorization", "")
         if auth.startswith("Bearer "):

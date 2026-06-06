@@ -35,11 +35,14 @@ DATA_DIR = os.environ.get("RYNCTL_DATA_DIR", "/data")
 # ---------------------------------------------------------------------------
 # Security
 # ---------------------------------------------------------------------------
+ADMIN_PASSWORD = os.environ.get("RYNCTL_ADMIN_PASSWORD", "admin")
 SESSION_EXPIRY_DAYS = int(os.environ.get("RYNCTL_SESSION_DAYS", 7))
 MAX_LOGIN_ATTEMPTS = int(os.environ.get("RYNCTL_MAX_LOGIN_ATTEMPTS", 5))
 LOCKOUT_MINUTES = int(os.environ.get("RYNCTL_LOCKOUT_MINUTES", 15))
 RATE_LIMIT_RPM = int(os.environ.get("RYNCTL_RATE_LIMIT_RPM", 120))
 SESSION_COOKIE_MAX_AGE = SESSION_EXPIRY_DAYS * 86400
+# Set the Secure attribute on the session cookie (enable when serving over HTTPS)
+SECURE_COOKIES = os.environ.get("RYNCTL_SECURE_COOKIES", "false").lower() in ("1", "true", "yes")
 BROWSE_ROOTS = [
     str(Path(p).expanduser().resolve())
     for p in os.environ.get("RYNCTL_BROWSE_ROOTS", "").split(",")

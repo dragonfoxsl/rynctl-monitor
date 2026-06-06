@@ -7,7 +7,7 @@ from datetime import timedelta
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
 
-from backend.config import LOCKOUT_MINUTES, MAX_LOGIN_ATTEMPTS, SESSION_COOKIE_MAX_AGE
+from backend.config import LOCKOUT_MINUTES, MAX_LOGIN_ATTEMPTS, SECURE_COOKIES, SESSION_COOKIE_MAX_AGE
 from backend.database import get_db, log_audit
 from backend.models import LoginRequest
 from backend.security import (
@@ -15,6 +15,7 @@ from backend.security import (
     get_csrf_token_for_session,
     get_current_user,
     require_auth,
+    sign_token,
     verify_password,
     _get_session_token_from_request,
 )
@@ -85,7 +86,8 @@ async def login(payload: LoginRequest):
         "role": user["role"],
     })
     response.set_cookie(
-        "session_token", token, httponly=True, samesite="lax", max_age=SESSION_COOKIE_MAX_AGE
+        "session_token", sign_token(token), httponly=True, samesite="lax",
+        secure=SECURE_COOKIES, max_age=SESSION_COOKIE_MAX_AGE,
     )
     return response
 

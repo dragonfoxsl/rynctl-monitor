@@ -3,6 +3,7 @@ FastAPI middleware — API rate limiting and request logging.
 """
 
 import logging
+import secrets
 import time
 from collections import defaultdict
 
@@ -10,7 +11,7 @@ from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from backend.config import RATE_LIMIT_RPM
-from backend.security import get_csrf_token_for_session
+from backend.security import get_csrf_token_for_session, unsign_token
 
 logger = logging.getLogger(__name__)
 
@@ -36,9 +37,14 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         now = time.time()
         cutoff = now - self.window
 
-        # Prune old entries and add current
-        hits = self._hits[client_ip]
-        self._hits[client_ip] = [t for t in hits if t > cutoff]
+        # Prune stale entries across all IPs so idle clients don't leak memory
+        for ip in list(self._hits.keys()):
+            recent = [t for t in self._hits[ip] if t > cutoff]
+            if recent:
+                self._hits[ip] = recent
+            else:
+                del self._hits[ip]
+
         self._hits[client_ip].append(now)
 
         if len(self._hits[client_ip]) > self.rpm:
@@ -94,13 +100,13 @@ class CSRFMiddleware(BaseHTTPMiddleware):
         if request.method in self.SAFE_METHODS or request.url.path in self.EXEMPT_PATHS:
             return await call_next(request)
 
-        session_token = request.cookies.get("session_token")
+        session_token = unsign_token(request.cookies.get("session_token"))
         if not session_token:
             return await call_next(request)
 
         expected = get_csrf_token_for_session(session_token)
         provided = request.headers.get("X-CSRF-Token", "")
-        if not expected or provided != expected:
+        if not expected or not secrets.compare_digest(provided, expected):
             return Response(
                 content='{"detail":"CSRF token missing or invalid"}',
                 status_code=403,

@@ -60,20 +60,23 @@ def init_db():
         _migrate_column(conn, "users", "failed_login_attempts", "INTEGER DEFAULT 0")
         _migrate_column(conn, "users", "lockout_until", "TEXT")
 
-        # Seed default admin (admin/admin) when DB is empty
+        # Seed the admin user when the DB is empty. The initial password comes
+        # from RYNCTL_ADMIN_PASSWORD (defaults to "admin").
         row = conn.execute("SELECT COUNT(*) AS c FROM users").fetchone()
         if row["c"] == 0:
-            pw_hash = hash_password("admin")
+            from backend.config import ADMIN_PASSWORD
+
             conn.execute(
                 "INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)",
-                ("admin", pw_hash, "admin"),
+                ("admin", hash_password(ADMIN_PASSWORD), "admin"),
             )
             conn.commit()
-            logger.info("Seeded default admin user (admin/admin)")
-            logger.warning(
-                "Default admin password is 'admin' — change it immediately "
-                "after first login"
-            )
+            logger.info("Seeded admin user")
+            if ADMIN_PASSWORD == "admin":
+                logger.warning(
+                    "Default admin password is 'admin' — set RYNCTL_ADMIN_PASSWORD "
+                    "or change it immediately after first login"
+                )
     finally:
         conn.close()
 

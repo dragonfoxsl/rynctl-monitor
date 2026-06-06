@@ -14,7 +14,7 @@ from backend.database import get_db, log_audit
 from backend.models import BrowseRequest, JobsImportRequest, SSHTestRequest
 from backend.security import require_auth, require_role
 from backend.scheduler import schedule_job
-from backend.validation import normalize_local_browse_path, validate_cron_expression
+from backend.validation import normalize_local_browse_path, validate_cron_expression, validate_job_payload
 
 router = APIRouter(prefix="/api", tags=["transfer"])
 
@@ -75,6 +75,12 @@ async def import_jobs(payload: JobsImportRequest, request: Request):
                 continue
 
             j["schedule_cron"] = validate_cron_expression(j.get("schedule_cron", ""))
+            # Skip jobs carrying unsafe ssh_port/flags rather than aborting the batch
+            try:
+                validate_job_payload(j)
+            except HTTPException:
+                skipped += 1
+                continue
             conn.execute(
                 """INSERT INTO jobs (name, source, destination, remote_host, ssh_port, ssh_key,
                        flags, exclude_patterns, bandwidth_limit, custom_flags, tags,

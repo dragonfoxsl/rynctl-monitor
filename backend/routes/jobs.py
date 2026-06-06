@@ -12,7 +12,7 @@ from backend.models import JobPayload
 from backend.rsync import build_rsync_command, job_has_running_run
 from backend.scheduler import schedule_job, unschedule_job
 from backend.security import require_auth, require_role
-from backend.validation import validate_cron_expression
+from backend.validation import validate_cron_expression, validate_job_payload
 
 router = APIRouter(prefix="/api/jobs", tags=["jobs"])
 
@@ -74,6 +74,7 @@ async def create_job(payload: JobPayload, request: Request):
     user = require_role(request, "admin", "rsync")
     body = payload.model_dump()
     body["schedule_cron"] = validate_cron_expression(body.get("schedule_cron", ""))
+    validate_job_payload(body)
 
     for f in ["name", "source", "destination"]:
         if not body.get(f):
@@ -132,6 +133,7 @@ async def update_job(job_id: int, payload: JobPayload, request: Request):
     body = payload.model_dump(exclude_unset=True)
     if "schedule_cron" in body:
         body["schedule_cron"] = validate_cron_expression(body.get("schedule_cron", ""))
+    validate_job_payload(body)
 
     conn = get_db()
     try:
