@@ -8,8 +8,8 @@ import logging
 import re
 import subprocess
 import threading
-import time
 from pathlib import Path
+from typing import NamedTuple
 
 from backend.config import JOB_TIMEOUT_SECS
 from backend.database import LOGS_DIR, get_db
@@ -22,6 +22,12 @@ logger = logging.getLogger(__name__)
 RUN_TIMEOUT_EXIT_CODE = -2
 STALE_RUN_EXIT_CODE = -3
 _run_lock = threading.Lock()
+
+
+class RetryScheduled(NamedTuple):
+    """Returned by run_rsync_job to ask the job runner to re-enqueue a retry."""
+    attempt: int
+    delay: int
 
 
 def build_rsync_command(job: dict) -> list[str]:
@@ -243,11 +249,11 @@ def run_rsync_job(job_id: int, attempt: int = 1):
 
         if status == "failed":
             send_webhook(job, run_data, "failure")
-            # Auto-retry if configured and attempts remain
+            # Auto-retry if configured and attempts remain — hand the retry back
+            # to the job runner instead of sleeping on the worker thread.
             if retry_max > 0 and attempt < retry_max:
-                logger.info("Retrying job '%s' in %ds (attempt %d/%d)", job.get("name"), retry_delay, attempt + 1, retry_max)
-                time.sleep(retry_delay)
-                run_rsync_job(job_id, attempt + 1)
+                logger.info("Scheduling retry of job '%s' in %ds (attempt %d/%d)", job.get("name"), retry_delay, attempt + 1, retry_max)
+                return RetryScheduled(attempt + 1, retry_delay)
         else:
             send_webhook(job, run_data, "success")
 
@@ -275,6 +281,5 @@ def run_rsync_job(job_id: int, attempt: int = 1):
             pass
 
         if retry_max > 0 and attempt < retry_max:
-            logger.info("Retrying job %d after exception in %ds", job_id, retry_delay)
-            time.sleep(retry_delay)
-            run_rsync_job(job_id, attempt + 1)
+            logger.info("Scheduling retry of job %d after exception in %ds", job_id, retry_delay)
+            return RetryScheduled(attempt + 1, retry_delay)

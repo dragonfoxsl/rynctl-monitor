@@ -26,6 +26,68 @@ def test_job_crud_and_last_run_field(client, auth_headers, db):
     assert payload["total_data"] == 42
 
 
+def test_non_numeric_ssh_port_is_rejected(client, auth_headers):
+    res = client.post(
+        "/api/jobs",
+        json={
+            "name": "bad-port",
+            "source": "/tmp/src",
+            "destination": "/tmp/dst",
+            "ssh_port": "22; rm -rf /",
+        },
+        headers=auth_headers,
+    )
+    assert res.status_code == 400
+    assert "ssh_port" in res.json()["detail"].lower()
+
+
+def test_out_of_range_ssh_port_is_rejected(client, auth_headers):
+    res = client.post(
+        "/api/jobs",
+        json={"name": "p", "source": "/tmp/src", "destination": "/tmp/dst", "ssh_port": "70000"},
+        headers=auth_headers,
+    )
+    assert res.status_code == 400
+
+
+def test_dangerous_custom_flag_is_rejected(client, auth_headers):
+    res = client.post(
+        "/api/jobs",
+        json={
+            "name": "evil",
+            "source": "/tmp/src",
+            "destination": "/tmp/dst",
+            "custom_flags": "--rsync-path=sh -c 'id'",
+        },
+        headers=auth_headers,
+    )
+    assert res.status_code == 400
+    assert "not allowed" in res.json()["detail"].lower()
+
+
+def test_dangerous_remote_shell_flag_in_flags_is_rejected(client, auth_headers):
+    res = client.post(
+        "/api/jobs",
+        json={
+            "name": "evil2",
+            "source": "/tmp/src",
+            "destination": "/tmp/dst",
+            "custom_flags": "-e ssh-malicious",
+        },
+        headers=auth_headers,
+    )
+    assert res.status_code == 400
+
+
+def test_numeric_ssh_port_is_accepted(client, auth_headers):
+    res = client.post(
+        "/api/jobs",
+        json={"name": "ok-port", "source": "/tmp/src", "destination": "/tmp/dst", "ssh_port": "2222"},
+        headers=auth_headers,
+    )
+    assert res.status_code == 200
+
+
 def test_invalid_cron_is_rejected(client, auth_headers):
     res = client.post(
         "/api/jobs",
@@ -165,6 +227,62 @@ def test_run_rsync_job_times_out(db, rsync_module, monkeypatch):
     assert row["status"] == "failed"
     assert row["exit_code"] == rsync_module.RUN_TIMEOUT_EXIT_CODE
     assert "Timed out" in row["error_message"]
+
+
+def test_failed_job_schedules_retry_without_recursing(db, rsync_module, monkeypatch):
+    db.execute(
+        """INSERT INTO jobs (name, source, destination, retry_max, retry_delay)
+           VALUES ('retry-job', '/tmp/src', '/tmp/dst', 2, 0)"""
+    )
+    db.commit()
+    job_id = db.execute("SELECT id FROM jobs WHERE name = 'retry-job'").fetchone()["id"]
+
+    monkeypatch.setattr(
+        rsync_module,
+        "build_rsync_command",
+        lambda job: ["python", "-c", "import sys; sys.exit(1)"],
+    )
+
+    result = rsync_module.run_rsync_job(job_id, attempt=1)
+
+    # Should signal a retry for attempt 2 rather than sleeping + recursing.
+    assert isinstance(result, rsync_module.RetryScheduled)
+    assert result.attempt == 2
+
+    # Exactly one run row — recursion would have created a second.
+    count = db.execute(
+        "SELECT COUNT(*) AS c FROM job_runs WHERE job_id = ?", (job_id,)
+    ).fetchone()["c"]
+    assert count == 1
+
+
+def test_failed_job_without_retries_returns_none(db, rsync_module, monkeypatch):
+    db.execute(
+        "INSERT INTO jobs (name, source, destination) VALUES ('no-retry', '/tmp/src', '/tmp/dst')"
+    )
+    db.commit()
+    job_id = db.execute("SELECT id FROM jobs WHERE name = 'no-retry'").fetchone()["id"]
+
+    monkeypatch.setattr(
+        rsync_module,
+        "build_rsync_command",
+        lambda job: ["python", "-c", "import sys; sys.exit(1)"],
+    )
+
+    assert rsync_module.run_rsync_job(job_id, attempt=1) is None
+
+
+def test_enqueue_job_forwards_attempt_onto_queue(job_runner_module, monkeypatch):
+    monkeypatch.setattr(job_runner_module, "job_has_running_run", lambda _job_id: False)
+    with job_runner_module._lock:
+        job_runner_module._queued_job_ids.clear()
+
+    job_runner_module.enqueue_job(99, "retry", attempt=3)
+    item = job_runner_module._queue.get_nowait()
+    assert item == (99, "retry", 3)
+
+    with job_runner_module._lock:
+        job_runner_module._queued_job_ids.clear()
 
 
 def test_enqueue_job_deduplicates_queue(job_runner_module, monkeypatch):
