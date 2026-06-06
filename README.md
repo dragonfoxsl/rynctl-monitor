@@ -202,7 +202,9 @@ All settings are optional. Defaults are designed for a quick local start.
 | Variable | Default | Description |
 |---|---|---|
 | `RYNCTL_PORT` | `8080` | HTTP port the server listens on |
-| `RYNCTL_SECRET` | `change-me` | Secret key for signing session tokens — **change this in production** |
+| `RYNCTL_SECRET` | `change-me` | HMAC key used to sign session cookies — **change this in production** |
+| `RYNCTL_ADMIN_PASSWORD` | `admin` | Initial password for the seeded `admin` user (only used when the database is first created) |
+| `RYNCTL_SECURE_COOKIES` | `false` | Set the `Secure` flag on the session cookie — enable when serving over HTTPS |
 | `RYNCTL_DATA_DIR` | `/data` | Directory for the SQLite database and run logs. Falls back to `./data` if `/data` doesn't exist |
 | `RYNCTL_LOG_LEVEL` | `INFO` | Python log level (`DEBUG`, `INFO`, `WARNING`, `ERROR`) |
 | `RYNCTL_SESSION_DAYS` | `7` | Number of days before a session token expires |
@@ -228,7 +230,9 @@ You can also place these in a `.env` file in the project root — it is loaded a
 | `rsync` | Yes | Yes | Yes | No |
 | `readonly` | Yes | No | No | No |
 
-The default `admin` account is created on first run with password `admin`. Change it after first login.
+The default `admin` account is created on first run. Set `RYNCTL_ADMIN_PASSWORD` before first startup to choose a strong initial password, or change it from the Users page after logging in.
+
+> **Deployment note:** the in-process job runner (a single worker thread) and the in-memory rate limiter are **per-process**. Run the app with a single Uvicorn worker. Running multiple workers would duplicate scheduled job execution and split rate-limit state across processes.
 
 ---
 

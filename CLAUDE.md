@@ -140,7 +140,9 @@ Schema auto-applied on first startup. New columns added via `ALTER TABLE IF NOT 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `RYNCTL_PORT` | `8080` | HTTP port |
-| `RYNCTL_SECRET` | `change-me` | Session signing key (**change in production**) |
+| `RYNCTL_SECRET` | `change-me` | HMAC key for signing session cookies (**change in production**) |
+| `RYNCTL_ADMIN_PASSWORD` | `admin` | Initial seeded admin password (only on first DB creation) |
+| `RYNCTL_SECURE_COOKIES` | `false` | Set `Secure` flag on session cookie (enable for HTTPS) |
 | `RYNCTL_DATA_DIR` | `/data` | SQLite DB + logs directory |
 | `RYNCTL_LOG_LEVEL` | `INFO` | Python log level |
 | `RYNCTL_RATE_LIMIT_RPM` | `120` | API rate limit per IP |
@@ -158,12 +160,13 @@ Schema auto-applied on first startup. New columns added via `ALTER TABLE IF NOT 
 ## Security
 
 - **Passwords**: PBKDF2-SHA256, 100k iterations, random 16-byte salt
-- **Sessions**: 64-char hex tokens, HttpOnly cookies, SameSite=Lax
+- **Sessions**: 64-char hex tokens, HMAC-signed HttpOnly cookies (`token.signature`), SameSite=Lax, optional Secure
+- **Single-process**: job runner (one worker thread) + rate limiter are per-process — run a single Uvicorn worker
 - **CSRF**: Separate per-session tokens, required on all mutations (except login)
 - **Rate limiting**: Per-IP sliding window (60s), configurable RPM
 - **Account lockout**: 5 failed attempts → 15min lockout
 - **Path browsing**: Validated against BROWSE_ROOTS whitelist + symlink resolution
-- **Subprocess**: rsync commands built from validated job data, `--stats` always appended
+- **Subprocess**: rsync commands built from validated job data (`ssh_port` numeric, `-e`/`--rsh`/`--rsync-path` rejected in flags), `--stats` always appended
 
 ## Key Conventions
 
