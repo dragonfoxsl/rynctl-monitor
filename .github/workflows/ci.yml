@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  backend-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install system deps
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends rsync openssh-client
+      - name: Install Python deps
+        run: pip install -r requirements-dev.txt
+      - name: Run backend unit tests
+        run: pytest
+
+  e2e-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run browser + API suite in Docker
+        run: make e2e-tests
+      - name: Tear down
+        if: always()
+        run: docker compose down -v || true
