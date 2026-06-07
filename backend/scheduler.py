@@ -9,7 +9,8 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
-from backend.database import cleanup_expired_sessions, get_db
+from backend.config import RUN_RETENTION_DAYS
+from backend.database import cleanup_expired_sessions, get_db, prune_old_runs
 from backend.job_runner import enqueue_job
 
 logger = logging.getLogger(__name__)
@@ -83,3 +84,13 @@ def load_schedules():
         replace_existing=True,
     )
     logger.info("Registered hourly session cleanup task")
+
+    # Daily run/log retention pruning (when configured)
+    if RUN_RETENTION_DAYS > 0:
+        scheduler.add_job(
+            lambda: prune_old_runs(RUN_RETENTION_DAYS),
+            IntervalTrigger(hours=24),
+            id="run_retention",
+            replace_existing=True,
+        )
+        logger.info("Registered daily run retention task (%d days)", RUN_RETENTION_DAYS)

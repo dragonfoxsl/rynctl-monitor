@@ -10,10 +10,38 @@ from collections import defaultdict
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from backend.config import RATE_LIMIT_RPM
+from backend.config import RATE_LIMIT_RPM, SECURE_COOKIES
 from backend.security import get_csrf_token_for_session, unsign_token
 
 logger = logging.getLogger(__name__)
+
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """Attach standard security headers to every response."""
+
+    # Allow same-origin assets + inline styles (the SPA uses inline style attrs).
+    _CSP = (
+        "default-src 'self'; "
+        "img-src 'self' data:; "
+        "style-src 'self' 'unsafe-inline'; "
+        "script-src 'self'; "
+        "connect-src 'self'; "
+        "frame-ancestors 'none'; "
+        "base-uri 'self'; "
+        "form-action 'self'"
+    )
+
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("Referrer-Policy", "same-origin")
+        response.headers.setdefault("Content-Security-Policy", self._CSP)
+        if SECURE_COOKIES:
+            response.headers.setdefault(
+                "Strict-Transport-Security", "max-age=31536000; includeSubDomains"
+            )
+        return response
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):

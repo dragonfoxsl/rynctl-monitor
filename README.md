@@ -212,6 +212,7 @@ All settings are optional. Defaults are designed for a quick local start.
 | `RYNCTL_LOCKOUT_MINUTES` | `15` | Lockout duration after exceeding max login attempts |
 | `RYNCTL_RATE_LIMIT_RPM` | `120` | Maximum API requests per minute per IP |
 | `RYNCTL_BROWSE_ROOTS` | *(empty)* | Optional comma-separated local directory roots allowed for `/api/browse`; when empty, local browsing is unrestricted |
+| `RYNCTL_RUN_RETENTION_DAYS` | `0` | Prune job runs and their log files older than N days (0 = keep forever) |
 | `RYNCTL_RETRY_MAX` | `0` | Default retry count for new jobs (0 = no retries) |
 | `RYNCTL_RETRY_DELAY` | `30` | Default delay in seconds between retries |
 | `RYNCTL_WEBHOOK_URL` | *(empty)* | URL to POST when a job finishes (leave empty to disable) |

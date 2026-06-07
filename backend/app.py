@@ -14,7 +14,7 @@ from fastapi.staticfiles import StaticFiles
 from backend.database import init_db
 from backend.job_runner import start_runner, stop_runner
 from backend.logging_config import setup_logging
-from backend.middleware import CSRFMiddleware, RateLimitMiddleware, RequestLoggingMiddleware
+from backend.middleware import CSRFMiddleware, RateLimitMiddleware, RequestLoggingMiddleware, SecurityHeadersMiddleware
 from backend.routes import auth, backup, crontab, health, jobs, metrics_route, runs, stats, transfer, users
 from backend.rsync import recover_running_jobs
 from backend.scheduler import load_schedules, scheduler
@@ -85,6 +85,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="rynctl-monitor", lifespan=lifespan)
 
 # Middleware (order matters — outermost first)
+app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(RateLimitMiddleware)
 app.add_middleware(CSRFMiddleware)

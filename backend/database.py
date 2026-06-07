@@ -60,6 +60,13 @@ def init_db():
         _migrate_column(conn, "users", "failed_login_attempts", "INTEGER DEFAULT 0")
         _migrate_column(conn, "users", "lockout_until", "TEXT")
 
+        # Performance indexes — the job list runs latest-run subqueries per job,
+        # and run/audit/session queries order by id/timestamp.
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_job_runs_job_id ON job_runs(job_id, id DESC)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_audit_log_created_at ON audit_log(created_at)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at)")
+        conn.commit()
+
         # Seed the admin user when the DB is empty. The initial password comes
         # from RYNCTL_ADMIN_PASSWORD (defaults to "admin").
         row = conn.execute("SELECT COUNT(*) AS c FROM users").fetchone()
@@ -103,6 +110,42 @@ def log_audit(user: dict | None, action: str, target_type: str = "", target_id: 
             (user_id, username, action, target_type, str(target_id), details),
         )
         conn.commit()
+    finally:
+        conn.close()
+
+
+def prune_old_runs(retention_days: int) -> int:
+    """Delete job_runs finished more than retention_days ago and remove their
+    log files. retention_days <= 0 disables pruning (returns 0)."""
+    if retention_days <= 0:
+        return 0
+
+    conn = get_db()
+    try:
+        rows = conn.execute(
+            "SELECT id, log_file FROM job_runs "
+            "WHERE finished_at IS NOT NULL "
+            "AND finished_at < datetime('now', ?)",
+            (f"-{int(retention_days)} days",),
+        ).fetchall()
+        if not rows:
+            return 0
+
+        for r in rows:
+            log_file = r["log_file"]
+            if log_file:
+                try:
+                    Path(log_file).unlink(missing_ok=True)
+                except OSError:
+                    pass
+
+        ids = [r["id"] for r in rows]
+        conn.execute(
+            f"DELETE FROM job_runs WHERE id IN ({','.join('?' * len(ids))})", ids
+        )
+        conn.commit()
+        logger.info("Pruned %d job run(s) older than %d days", len(ids), retention_days)
+        return len(ids)
     finally:
         conn.close()
 

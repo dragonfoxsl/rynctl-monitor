@@ -55,6 +55,7 @@ BROWSE_ROOTS = [
 RETRY_MAX = int(os.environ.get("RYNCTL_RETRY_MAX", 0))          # 0 = disabled
 RETRY_DELAY_SECS = int(os.environ.get("RYNCTL_RETRY_DELAY", 30))
 JOB_TIMEOUT_SECS = int(os.environ.get("RYNCTL_JOB_TIMEOUT", 0))  # 0 = disabled
+RUN_RETENTION_DAYS = int(os.environ.get("RYNCTL_RUN_RETENTION_DAYS", 0))  # 0 = keep forever
 WEBHOOK_URL = os.environ.get("RYNCTL_WEBHOOK_URL", "")          # POST on failure
 WEBHOOK_EVENTS = os.environ.get("RYNCTL_WEBHOOK_EVENTS", "failure")  # failure,success,all
 
