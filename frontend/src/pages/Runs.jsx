@@ -112,7 +112,7 @@ export function Runs() {
             ))}
             {!loading && filtered.length === 0 && (
               <tr><td colSpan="7" style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted)', fontSize: 14, fontFamily: 'var(--font-sans)' }}>
-                {(runs.value || []).length === 0 ? 'No runs yet — runs appear here once a job executes.' : 'No runs match your filter.'}
+                {(runs.value || []).length === 0 ? 'No runs yet. Runs appear here once a job executes.' : 'No runs match your filter.'}
               </td></tr>
             )}
           </tbody>

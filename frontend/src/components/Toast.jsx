@@ -14,7 +14,7 @@ export function showToast(message, type = 'success') {
 export function ToastContainer() {
   if (toasts.value.length === 0) return null;
   return (
-    <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 9999, display: 'flex', flexDirection: 'column', gap: 8 }}>
+    <div role="status" aria-live="polite" style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 9999, display: 'flex', flexDirection: 'column', gap: 8 }}>
       {toasts.value.map(t => (
         <div key={t.id} style={{
           padding: '12px 20px', borderRadius: 'var(--radius-md)',

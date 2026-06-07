@@ -103,11 +103,11 @@ export function Users() {
                   </td>
                   <td style={{ padding: '14px 16px' }}>
                     <div style={{ display: 'flex', gap: 4 }}>
-                      <button onClick={() => { modal.value = { type: 'user', data: u }; }} title="Edit" style={{
+                      <button onClick={() => { modal.value = { type: 'user', data: u }; }} title="Edit" aria-label={`Edit user ${u.username}`} style={{
                         padding: '6px 8px', background: 'none', border: '1px solid var(--border-input)',
                         borderRadius: 'var(--radius-sm)', color: 'var(--text-secondary)', cursor: 'pointer',
                       }}><Icon name="edit" size={14} /></button>
-                      <button onClick={() => deleteUser(u.id)} title="Delete" style={{
+                      <button onClick={() => deleteUser(u.id)} title="Delete" aria-label={`Delete user ${u.username}`} style={{
                         padding: '6px 8px', background: 'none', border: '1px solid var(--error-border)',
                         borderRadius: 'var(--radius-sm)', color: 'var(--error-text)', cursor: 'pointer',
                       }}><Icon name="delete" size={14} /></button>

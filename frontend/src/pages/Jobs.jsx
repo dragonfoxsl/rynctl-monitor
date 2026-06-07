@@ -248,7 +248,7 @@ export function Jobs() {
             {!loading && filtered.length === 0 && (
               <tr><td colSpan="6" style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted)', fontSize: 14, fontFamily: 'var(--font-sans)' }}>
                 {(jobs.value || []).length === 0
-                  ? (isReadonly() ? 'No jobs configured yet.' : 'No jobs yet — use “New Job” to create your first rsync job.')
+                  ? (isReadonly() ? 'No jobs configured yet.' : 'No jobs yet. Use "New Job" to create your first rsync job.')
                   : 'No jobs match your search.'}
               </td></tr>
             )}
