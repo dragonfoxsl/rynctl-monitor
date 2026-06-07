@@ -125,29 +125,6 @@ export function Users() {
         </table>
       </div>
 
-      {/* Security tip */}
-      <div style={{
-        marginTop: 20, padding: 20, background: 'var(--bg-secondary)',
-        borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-primary)',
-        boxShadow: 'var(--shadow-sm)', display: 'flex', alignItems: 'flex-start', gap: 12,
-      }}>
-        <div style={{
-          width: 32, height: 32, borderRadius: 'var(--radius-md)', flexShrink: 0,
-          background: 'var(--accent-light)', display: 'flex', alignItems: 'center',
-          justifyContent: 'center', color: 'var(--accent)',
-        }}>
-          <Icon name="shield" size={16} />
-        </div>
-        <div>
-          <div style={{ fontFamily: 'var(--font-sans)', fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>
-            Security Best Practice
-          </div>
-          <p style={{ fontFamily: 'var(--font-sans)', fontSize: 13, color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
-            Review user access monthly. Remove inactive accounts and ensure each team member has the minimum required permissions. Principle of Least Privilege.
-          </p>
-        </div>
-      </div>
-
       {modal.value?.type === 'user' && <UserModal user={modal.value.data} onSaved={loadUsers} />}
     </>
   );

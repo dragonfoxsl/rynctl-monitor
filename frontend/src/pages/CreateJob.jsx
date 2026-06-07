@@ -191,12 +191,17 @@ function FlagPill({ flag, label, selected, onClick }) {
   );
 }
 
-function ToggleSwitch({ checked, onChange }) {
+function ToggleSwitch({ checked, onChange, label }) {
   const [on, setOn] = useState(!!checked);
+  const toggle = () => { setOn(!on); if (onChange) onChange(!on); };
   return (
-    <div
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      aria-label={label || 'Toggle'}
       className={`toggle-switch ${on ? 'active' : ''}`}
-      onClick={() => { setOn(!on); if (onChange) onChange(!on); }}
+      onClick={toggle}
       style={{ flexShrink: 0 }}
     />
   );
@@ -206,8 +211,10 @@ function CollapsibleCard({ icon, title, subtitle, color, bg, defaultOpen, dark, 
   const [open, setOpen] = useState(!!defaultOpen);
   return (
     <div style={{ ...cardStyle, ...(dark && !open ? { background: 'var(--bg-code)' } : {}) }}>
-      <div style={{ ...cardHeaderStyle, cursor: 'pointer', ...(dark && !open ? { borderBottom: 'none' } : {}) }}
-        onClick={() => setOpen(!open)}>
+      <div role="button" tabIndex={0} aria-expanded={open}
+        style={{ ...cardHeaderStyle, cursor: 'pointer', ...(dark && !open ? { borderBottom: 'none' } : {}) }}
+        onClick={() => setOpen(!open)}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen(!open); } }}>
         <div style={iconBadge(color || 'var(--accent)', bg || 'var(--accent-light)')}>
           <Icon name={icon} size={15} />
         </div>
@@ -412,7 +419,7 @@ export function CreateJob({ job, onSaved }) {
           <div style={cardStyle}>
             <SectionTitle icon="wifi" title="SSH Configuration" subtitle="Remote transfer settings"
               color="var(--purple-text)" bg="var(--purple-light)"
-              right={<ToggleSwitch checked={sshEnabled} onChange={setSshEnabled} />}
+              right={<ToggleSwitch checked={sshEnabled} onChange={setSshEnabled} label="Enable remote SSH transfer" />}
             />
             {sshEnabled && (
               <div style={cardBodyStyle}>
@@ -534,7 +541,7 @@ export function CreateJob({ job, onSaved }) {
             <SectionTitle icon="history" title="Schedule" subtitle="Automate with cron timing"
               color="var(--success-text)" bg="var(--success-light)"
               right={
-                <ToggleSwitch checked={scheduleEnabled} onChange={(v) => setScheduleEnabled(v)} />
+                <ToggleSwitch checked={scheduleEnabled} onChange={(v) => setScheduleEnabled(v)} label="Enable scheduled runs" />
               }
             />
             <div style={cardBodyStyle}>

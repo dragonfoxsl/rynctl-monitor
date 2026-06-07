@@ -1,18 +1,34 @@
+import { useEffect } from 'preact/hooks';
 import { confirmDialog } from '../lib/store';
 import { Icon } from '../lib/icons';
 
 export function ConfirmDialog() {
   const d = confirmDialog.value;
-  if (!d) return null;
 
   const close = () => { confirmDialog.value = null; };
+
+  // Escape-to-dismiss, registered whenever a dialog is open
+  useEffect(() => {
+    if (!d) return;
+    const onKey = (e) => { if (e.key === 'Escape') close(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [d]);
+
+  if (!d) return null;
+
   const confirm = () => { d.onConfirm(); close(); };
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)',
-      zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center',
-    }}>
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={d.title}
+      onClick={(e) => { if (e.target === e.currentTarget) close(); }}
+      style={{
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)',
+        zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
       <div style={{
         background: 'var(--bg-secondary)', border: '1px solid var(--border-primary)',
         borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: 420,

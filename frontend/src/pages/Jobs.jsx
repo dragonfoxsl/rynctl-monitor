@@ -1,4 +1,4 @@
-import { useEffect } from 'preact/hooks';
+import { useEffect, useState } from 'preact/hooks';
 import { api } from '../lib/api';
 import { formatBytes, timeAgo, describeCron } from '../lib/utils';
 import { jobs, jobSearch, modal, confirmDialog, isReadonly, page } from '../lib/store';
@@ -9,9 +9,20 @@ import { JobModal } from '../components/JobModal';
 import { showToast } from '../components/Toast';
 
 export function Jobs() {
-  const loadJobs = () => api('GET', '/api/jobs').then(j => { jobs.value = j || []; }).catch(e => showToast(e.message, 'error'));
+  const [loading, setLoading] = useState(jobs.value === null || jobs.value === undefined);
+  const [healthy, setHealthy] = useState(null);
 
-  useEffect(() => { loadJobs(); }, []);
+  const loadJobs = () => api('GET', '/api/jobs')
+    .then(j => { jobs.value = j || []; })
+    .catch(e => showToast(e.message, 'error'))
+    .finally(() => setLoading(false));
+
+  useEffect(() => {
+    loadJobs();
+    api('GET', '/api/health')
+      .then(h => setHealthy(h?.status === 'healthy'))
+      .catch(() => setHealthy(false));
+  }, []);
 
   const q = (jobSearch.value || '').toLowerCase();
   const filtered = (jobs.value || []).filter(j => {
@@ -27,6 +38,13 @@ export function Jobs() {
   const scheduled = all.filter(j => j.schedule_cron).length;
   const active = all.filter(j => j.last_status === 'running').length;
   const failed = all.filter(j => j.last_status === 'failed').length;
+
+  // While any job is running, poll so status updates without a manual reload.
+  useEffect(() => {
+    if (active === 0) return;
+    const t = setInterval(loadJobs, 5000);
+    return () => clearInterval(t);
+  }, [active]);
 
   const runJob = async (id) => {
     try { await api('POST', `/api/jobs/${id}/run`); showToast('Job started'); loadJobs(); }
@@ -52,19 +70,29 @@ export function Jobs() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
         <div>
           <h1 style={{ fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 26, margin: 0, color: 'var(--text-primary)' }}>
-            Task Management
+            Jobs
           </h1>
           <p style={{ fontFamily: 'var(--font-sans)', fontSize: 14, color: 'var(--text-muted)', margin: '4px 0 0' }}>
             Configure and monitor your automated rsync synchronization jobs.
           </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{
-            padding: '6px 14px', borderRadius: 'var(--radius-full)', fontSize: 13,
-            fontFamily: 'var(--font-sans)', fontWeight: 500,
-            background: 'var(--success-light)', color: 'var(--success-text)',
-            border: '1px solid var(--success-border)',
-          }}>System Connected</span>
+          {healthy !== null && (
+            <span title="Backend health (/api/health)" style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: '6px 14px', borderRadius: 'var(--radius-full)', fontSize: 13,
+              fontFamily: 'var(--font-sans)', fontWeight: 500,
+              background: healthy ? 'var(--success-light)' : 'var(--error-light)',
+              color: healthy ? 'var(--success-text)' : 'var(--error-text)',
+              border: `1px solid ${healthy ? 'var(--success-border)' : 'var(--error-border)'}`,
+            }}>
+              <span style={{
+                width: 7, height: 7, borderRadius: '50%',
+                background: healthy ? 'var(--success)' : 'var(--error)',
+              }} />
+              {healthy ? 'System Healthy' : 'System Degraded'}
+            </span>
+          )}
           {!isReadonly() && (
             <button onClick={() => { page.value = 'create-job'; window.location.hash = '#create-job'; }} style={{
               padding: '10px 20px', background: 'var(--accent)', border: 'none',
@@ -136,6 +164,15 @@ export function Jobs() {
             </tr>
           </thead>
           <tbody>
+            {loading && (jobs.value || []).length === 0 && [0, 1, 2, 3].map(i => (
+              <tr key={`sk-${i}`} style={{ borderBottom: '1px solid var(--border-secondary)' }}>
+                {[0, 1, 2, 3, 4, 5].map(c => (
+                  <td key={c} style={{ padding: '14px 16px' }}>
+                    <div class="skeleton" style={{ height: 14, width: c === 1 ? '90%' : '60%' }} />
+                  </td>
+                ))}
+              </tr>
+            ))}
             {filtered.map(j => {
               const sched = j.schedule_cron;
               return (
@@ -184,21 +221,21 @@ export function Jobs() {
                   <td style={{ padding: '14px 16px' }}>
                     <div style={{ display: 'flex', gap: 4 }}>
                       {isReadonly() ? (
-                        <button onClick={() => { modal.value = { type: 'job', data: j }; }} title="View" style={actionBtn('var(--text-secondary)', 'var(--border-input)')}>
+                        <button onClick={() => { modal.value = { type: 'job', data: j }; }} title="View" aria-label={`View ${j.name}`} style={actionBtn('var(--text-secondary)', 'var(--border-input)')}>
                           <Icon name="eye" size={14} />
                         </button>
                       ) : (
                         <>
-                          <button onClick={() => runJob(j.id)} title="Run" style={actionBtn('var(--success-text)', 'var(--success-border)')}>
+                          <button onClick={() => runJob(j.id)} title="Run" aria-label={`Run ${j.name}`} style={actionBtn('var(--success-text)', 'var(--success-border)')}>
                             <Icon name="play" size={14} />
                           </button>
-                          <button onClick={() => { modal.value = { type: 'job', data: j }; }} title="Edit" style={actionBtn('var(--text-secondary)', 'var(--border-input)')}>
+                          <button onClick={() => { modal.value = { type: 'job', data: j }; }} title="Edit" aria-label={`Edit ${j.name}`} style={actionBtn('var(--text-secondary)', 'var(--border-input)')}>
                             <Icon name="edit" size={14} />
                           </button>
-                          <button onClick={() => cloneJob(j)} title="Clone" style={actionBtn('var(--text-secondary)', 'var(--border-input)')}>
+                          <button onClick={() => cloneJob(j)} title="Clone" aria-label={`Clone ${j.name}`} style={actionBtn('var(--text-secondary)', 'var(--border-input)')}>
                             <Icon name="clone" size={14} />
                           </button>
-                          <button onClick={() => deleteJob(j.id)} title="Delete" style={actionBtn('var(--error-text)', 'var(--error-border)')}>
+                          <button onClick={() => deleteJob(j.id)} title="Delete" aria-label={`Delete ${j.name}`} style={actionBtn('var(--error-text)', 'var(--error-border)')}>
                             <Icon name="delete" size={14} />
                           </button>
                         </>
@@ -208,45 +245,15 @@ export function Jobs() {
                 </tr>
               );
             })}
-            {filtered.length === 0 && (
+            {!loading && filtered.length === 0 && (
               <tr><td colSpan="6" style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted)', fontSize: 14, fontFamily: 'var(--font-sans)' }}>
-                No jobs configured
+                {(jobs.value || []).length === 0
+                  ? (isReadonly() ? 'No jobs configured yet.' : 'No jobs yet — use “New Job” to create your first rsync job.')
+                  : 'No jobs match your search.'}
               </td></tr>
             )}
           </tbody>
         </table>
-      </div>
-
-      {/* Tips */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 20 }}>
-        <div style={{
-          background: 'var(--bg-secondary)', borderRadius: 'var(--radius-lg)',
-          border: '1px solid var(--border-primary)', padding: 20, boxShadow: 'var(--shadow-sm)',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-            <Icon name="flag" size={16} />
-            <span style={{ fontFamily: 'var(--font-sans)', fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
-              Quick Tip: Bandwidth Limiting
-            </span>
-          </div>
-          <p style={{ fontFamily: 'var(--font-sans)', fontSize: 13, color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
-            You can set bandwidth limits on jobs to prevent network saturation. Use the "Bandwidth Limit" setting in a job to limit KB/s.
-          </p>
-        </div>
-        <div style={{
-          background: 'var(--bg-secondary)', borderRadius: 'var(--radius-lg)',
-          border: '1px solid var(--border-primary)', padding: 20, boxShadow: 'var(--shadow-sm)',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-            <Icon name="terminal" size={16} />
-            <span style={{ fontFamily: 'var(--font-sans)', fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
-              Cron Expressions
-            </span>
-          </div>
-          <p style={{ fontFamily: 'var(--font-sans)', fontSize: 13, color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
-            System supports standard cron syntax. Need help? Use our built-in scheduler when creating new jobs.
-          </p>
-        </div>
       </div>
 
       {modal.value?.type === 'job' && <JobModal job={modal.value.data} onSaved={loadJobs} />}

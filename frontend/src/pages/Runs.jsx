@@ -1,4 +1,4 @@
-import { useEffect } from 'preact/hooks';
+import { useEffect, useState } from 'preact/hooks';
 import { api } from '../lib/api';
 import { formatBytes, formatNumber, timeAgo } from '../lib/utils';
 import { runs, runSearch, expandedLog } from '../lib/store';
@@ -8,9 +8,14 @@ import { SearchInput } from '../components/SearchInput';
 import { showToast } from '../components/Toast';
 
 export function Runs() {
-  const loadRuns = () => {
-    api('GET', '/api/runs/recent').then(r => { runs.value = r || []; expandedLog.value = null; }).catch(e => showToast(e.message, 'error'));
-  };
+  const [loading, setLoading] = useState(runs.value === null || runs.value === undefined);
+
+  // clearLog=false during background polling so an open log viewer stays open
+  const fetchRuns = (clearLog) => api('GET', '/api/runs/recent')
+    .then(r => { runs.value = r || []; if (clearLog) expandedLog.value = null; })
+    .catch(e => showToast(e.message, 'error'))
+    .finally(() => setLoading(false));
+  const loadRuns = () => fetchRuns(true);
 
   useEffect(() => { loadRuns(); }, []);
 
@@ -19,6 +24,14 @@ export function Runs() {
     if (!rq) return true;
     return (r.job_name || '').toLowerCase().includes(rq) || (r.status || '').toLowerCase().includes(rq);
   });
+
+  // Poll while any run is still in progress so it resolves without a manual refresh.
+  const anyRunning = (runs.value || []).some(r => r.status === 'running');
+  useEffect(() => {
+    if (!anyRunning) return;
+    const t = setInterval(() => fetchRuns(false), 5000);
+    return () => clearInterval(t);
+  }, [anyRunning]);
 
   const viewLog = async (id) => {
     try {
@@ -68,6 +81,15 @@ export function Runs() {
             </tr>
           </thead>
           <tbody>
+            {loading && (runs.value || []).length === 0 && [0, 1, 2, 3, 4].map(i => (
+              <tr key={`sk-${i}`} style={{ borderBottom: '1px solid var(--border-secondary)' }}>
+                {[0, 1, 2, 3, 4, 5, 6].map(c => (
+                  <td key={c} style={{ padding: '12px 16px' }}>
+                    <div class="skeleton" style={{ height: 13, width: '70%' }} />
+                  </td>
+                ))}
+              </tr>
+            ))}
             {filtered.map(r => (
               <tr key={r.id} style={{ borderBottom: '1px solid var(--border-secondary)', transition: 'background 0.1s' }}
                 onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
@@ -79,7 +101,7 @@ export function Runs() {
                 <td style={{ padding: '12px 16px', fontFamily: 'var(--font-sans)', fontSize: 13, color: 'var(--text-secondary)' }}>{formatBytes(r.bytes_transferred)}</td>
                 <td style={{ padding: '12px 16px', fontFamily: 'var(--font-sans)', fontSize: 13, color: 'var(--text-secondary)' }}>{formatNumber(r.files_transferred)}</td>
                 <td style={{ padding: '12px 16px' }}>
-                  <button onClick={() => viewLog(r.id)} title="View Log" style={{
+                  <button onClick={() => viewLog(r.id)} title="View Log" aria-label={`View log for run #${r.id}`} style={{
                     padding: '6px 8px', background: 'none', border: '1px solid var(--border-input)',
                     borderRadius: 'var(--radius-sm)', color: 'var(--text-secondary)', cursor: 'pointer',
                   }}>
@@ -88,9 +110,9 @@ export function Runs() {
                 </td>
               </tr>
             ))}
-            {filtered.length === 0 && (
+            {!loading && filtered.length === 0 && (
               <tr><td colSpan="7" style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted)', fontSize: 14, fontFamily: 'var(--font-sans)' }}>
-                No runs recorded
+                {(runs.value || []).length === 0 ? 'No runs yet — runs appear here once a job executes.' : 'No runs match your filter.'}
               </td></tr>
             )}
           </tbody>

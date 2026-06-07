@@ -6,9 +6,9 @@ export function Sidebar({ onNavigate }) {
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
     { id: 'create-job', label: 'Create Job', icon: 'plus' },
-    { id: 'jobs', label: 'Task Management', icon: 'jobs' },
+    { id: 'jobs', label: 'Jobs', icon: 'jobs' },
     { id: 'runs', label: 'Run History', icon: 'history' },
-    { id: 'flags', label: 'Logs', icon: 'list' },
+    { id: 'flags', label: 'Flags Reference', icon: 'list' },
   ];
   if (isAdmin()) {
     navItems.push({ id: 'settings', label: 'Settings', icon: 'settings' });
@@ -92,7 +92,7 @@ export function Sidebar({ onNavigate }) {
           color: 'var(--text-secondary)', fontFamily: 'var(--font-sans)',
           fontSize: 13, cursor: 'pointer', textAlign: 'left',
         }}>
-          <span style={{ fontSize: 16 }}>{isDark ? '☀️' : '🌙'}</span>
+          <Icon name={isDark ? 'sun' : 'moon'} size={16} />
           {isDark ? 'Light Mode' : 'Dark Mode'}
         </button>
       </div>
@@ -111,7 +111,7 @@ export function Sidebar({ onNavigate }) {
           <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)', fontFamily: 'var(--font-sans)' }}>{u?.username}</div>
           <div style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-sans)', textTransform: 'capitalize' }}>{u?.role}</div>
         </div>
-        <button onClick={handleLogout} title="Logout" style={{
+        <button onClick={handleLogout} title="Logout" aria-label="Log out" style={{
           background: 'none', border: 'none', color: 'var(--text-muted)',
           cursor: 'pointer', padding: 4,
         }}>
