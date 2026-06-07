@@ -90,9 +90,14 @@ function FileBrowser({ initialPath, host, port, sshKey, onSelect, onClose }) {
   }, [host, port, sshKey]);
 
   useEffect(() => { browse(path); }, []);
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   return (
-    <div style={{
+    <div role="dialog" aria-modal="true" aria-label="File browser" style={{
       position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)',
       zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center',
     }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
@@ -106,10 +111,10 @@ function FileBrowser({ initialPath, host, port, sshKey, onSelect, onClose }) {
           <span style={{ fontFamily: 'var(--font-sans)', fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>
             <Icon name="folder-open" /> Browse {host ? `${host}:` : 'Local '}Files
           </span>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><Icon name="x" /></button>
+          <button onClick={onClose} aria-label="Close file browser" style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><Icon name="x" /></button>
         </div>
         <div style={{ padding: '10px 20px', background: 'var(--bg-tertiary)', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--accent)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{path}</span>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--accent-text)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{path}</span>
           <button onClick={() => { onSelect(path); onClose(); }} style={{
             padding: '6px 14px', background: 'var(--accent)', border: 'none',
             borderRadius: 'var(--radius-sm)', color: '#fff', fontFamily: 'var(--font-sans)',
@@ -120,16 +125,17 @@ function FileBrowser({ initialPath, host, port, sshKey, onSelect, onClose }) {
           {loading && <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>Loading...</div>}
           {error && <div style={{ padding: '12px 20px', color: 'var(--error)', fontSize: 13 }}>{error}</div>}
           {!loading && entries.map(e => (
-            <div key={e.path}
+            <button key={e.path} type="button"
+              aria-label={e.is_dir ? `Open folder ${e.name}` : `Select file ${e.name}`}
               onClick={() => e.is_dir ? browse(e.path) : onSelect(e.path) || onClose()}
-              style={{ padding: '8px 20px', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13, color: 'var(--text-secondary)', transition: 'background .1s' }}
+              style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', padding: '8px 20px', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13, color: 'var(--text-secondary)', fontFamily: 'var(--font-sans)', transition: 'background .1s' }}
               onMouseEnter={ev => ev.currentTarget.style.background = 'var(--bg-hover)'}
               onMouseLeave={ev => ev.currentTarget.style.background = 'transparent'}>
-              <span style={{ color: e.is_dir ? 'var(--accent)' : 'var(--text-muted)' }}>
+              <span style={{ color: e.is_dir ? 'var(--accent-text)' : 'var(--text-muted)' }}>
                 <Icon name={e.is_dir ? 'folder' : 'file'} />
               </span>
-              <span style={{ color: e.is_dir ? 'var(--accent)' : 'var(--text-secondary)' }}>{e.name}{e.is_dir && '/'}</span>
-            </div>
+              <span style={{ color: e.is_dir ? 'var(--accent-text)' : 'var(--text-secondary)' }}>{e.name}{e.is_dir && '/'}</span>
+            </button>
           ))}
           {!loading && !error && entries.length === 0 && (
             <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>Empty directory</div>
@@ -180,7 +186,7 @@ function FlagPill({ flag, label, selected, onClick }) {
       fontFamily: 'var(--font-sans)', fontSize: 12, cursor: 'pointer',
       border: `1px solid ${selected ? 'var(--accent)' : 'var(--border-input)'}`,
       background: selected ? 'var(--accent-light)' : 'transparent',
-      color: selected ? 'var(--accent)' : 'var(--text-secondary)',
+      color: selected ? 'var(--accent-text)' : 'var(--text-secondary)',
       fontWeight: selected ? 600 : 400, transition: 'all .15s', userSelect: 'none',
       display: 'inline-flex', alignItems: 'center', gap: 5,
     }}>
@@ -402,7 +408,7 @@ export function CreateJob({ job, onSaved }) {
                 <div style={{
                   width: 28, height: 28, borderRadius: '50%', background: 'var(--accent-light)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  color: 'var(--accent)', fontSize: 14,
+                  color: 'var(--accent-text)', fontSize: 14,
                 }}>
                   <Icon name="chevron-right" size={14} />
                 </div>
@@ -449,7 +455,7 @@ export function CreateJob({ job, onSaved }) {
                 <div style={{ marginTop: 12 }}>
                   <button onClick={() => setShowAllFlags(!showAllFlags)} style={{
                     background: 'none', border: 'none', padding: '4px 0',
-                    fontFamily: 'var(--font-sans)', fontSize: 12, color: 'var(--accent)',
+                    fontFamily: 'var(--font-sans)', fontSize: 12, color: 'var(--accent-text)',
                     cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
                   }}>
                     {showAllFlags ? 'Hide' : 'Show'} all flags ({extraFlags.length} more)

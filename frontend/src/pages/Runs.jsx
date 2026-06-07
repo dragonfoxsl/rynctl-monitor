@@ -131,7 +131,7 @@ export function Runs() {
             <span style={{ fontFamily: 'var(--font-sans)', fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
               Log — Run #{expandedLog.value.runId}
             </span>
-            <button onClick={() => { expandedLog.value = null; }} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
+            <button onClick={() => { expandedLog.value = null; }} aria-label="Close log" style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
               <Icon name="x" />
             </button>
           </div>

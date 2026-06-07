@@ -78,7 +78,7 @@ make verify                 # frontend-build + backend-tests + e2e-tests
 
 **Playwright API:** auth, health, jobs CRUD + preview + runs + tags, stats.
 **Playwright UI:** login, sidebar nav, theme toggle, health pill, job create→appears, ConfirmDialog Escape, icon-button names, keyboard switch.
-**axe-core:** dashboard/jobs/runs/flags (serious+critical gate, `color-contrast` excluded — tracked §10 TC-A11Y-05).
+**axe-core:** dashboard/jobs/runs/flags — full serious+critical gate including `color-contrast`.
 
 ---
 
@@ -232,7 +232,7 @@ Automated (axe, `a11y.spec.js`) + manual (keyboard, SR).
 - TC-A11Y-02 **[auto-partial]** toggles are `role="switch"`, collapsibles `aria-expanded`; **[gap]** FileBrowser rows still `<div onClick>`.
 - TC-A11Y-03 **[auto]** icon-only buttons have `aria-label` (Jobs/Runs/Users/logout); **[gap]** modal close `x` buttons.
 - TC-A11Y-04 **[auto]** `ConfirmDialog` Escape + backdrop + `role="dialog"`; **[gap]** Job/User/FileBrowser modals lack Escape + focus trap + focus return.
-- TC-A11Y-05 **[gap]** Color contrast AA: `--text-muted` raised, but the accent blue used for text and some pills still fail. **Excluded from the axe gate**; top remaining a11y item.
+- TC-A11Y-05 **[auto]** Color contrast AA: `--text-muted` raised; `--accent-text` token for accent text; `--accent` darkened so white-on-accent buttons pass; warning text and code-on-dark colors fixed. `color-contrast` is now **enforced** by the axe gate on the scanned pages.
 - TC-A11Y-06 **[auto]** `prefers-reduced-motion` suppresses animation.
 - TC-A11Y-07 Toasts announced via `aria-live`.
 - TC-A11Y-08 **[manual]** Full keyboard-only pass: every action reachable and operable without a mouse.
@@ -319,7 +319,7 @@ Automated (axe, `a11y.spec.js`) + manual (keyboard, SR).
 2. Role-matrix API tests (§3) for `rsync` and `readonly`.
 3. Security-header assertions (§5 TC-SEC-07) once headers are added.
 4. UI specs for TC-UI-CJ-03 (cron+badge), TC-ST-04 (unsaved guard), TC-UI-DASH live refresh.
-5. `@axe-core/playwright` on CreateJob + modal-open states once focus-trap + labels land; then re-enable `color-contrast`.
+5. `@axe-core/playwright` on CreateJob + modal-open states (focus-trap + labels now landed; extend the scan to forms/modals).
 6. Visual-regression snapshots (dark/light per page) after the Button/Card/Metric component extraction.
 7. Load test (TC-PERF-01/02) with seeded large dataset; add `job_runs(job_id)` index first.
 
@@ -347,9 +347,9 @@ Automated (axe, `a11y.spec.js`) + manual (keyboard, SR).
 2. **No security headers** (TC-SEC-07).
 3. **No DB index** on `job_runs(job_id)` (TC-PERF-01).
 4. **No run/log retention** (TC-DATA-07).
-5. **Color-contrast below AA** for accent text (TC-A11Y-05).
-6. **Modal focus-trap / Escape / labels** (TC-A11Y-03/04).
-7. **FileBrowser keyboard access** (TC-A11Y-02).
+5. ~~Color-contrast below AA~~ — fixed; axe gate now enforces it.
+6. ~~Modal focus-trap / Escape / labels~~ — shared `Modal` (focus-trap, Escape, labeled close) + Escape on Job/FileBrowser modals.
+7. ~~FileBrowser keyboard access~~ — entries are now `<button>`s.
 8. **Unsaved-changes guard**, **persistent error + retry**, **Dashboard live refresh** (§12).
 9. **Responsive < 900px** (TC-XB-02).
 10. **Fake "Sort by" control**, **domain copy mismatch** (UX, P2/P3).

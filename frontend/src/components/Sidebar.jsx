@@ -72,7 +72,7 @@ export function Sidebar({ onNavigate }) {
               fontFamily: 'var(--font-sans)', fontSize: 14, transition: 'all .15s',
               marginBottom: 2,
               background: active ? 'var(--accent-light)' : 'transparent',
-              color: active ? 'var(--accent)' : 'var(--text-secondary)',
+              color: active ? 'var(--accent-text)' : 'var(--text-secondary)',
               fontWeight: active ? 600 : 400,
             }}
             onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'var(--bg-hover)'; }}

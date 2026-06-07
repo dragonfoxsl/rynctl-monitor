@@ -5,7 +5,7 @@ export function StatusBadge({ status }) {
     completed: { background: 'var(--success-light)', color: 'var(--success-text)', border: 'var(--success-border)' },
     failed: { background: 'var(--error-light)', color: 'var(--error-text)', border: 'var(--error-border)' },
     running: { background: 'var(--purple-light)', color: 'var(--purple-text)', border: 'var(--purple-border)' },
-    pending: { background: 'var(--accent-light)', color: 'var(--accent)', border: 'var(--accent-border)' },
+    pending: { background: 'var(--accent-light)', color: 'var(--accent-text)', border: 'var(--accent-border)' },
   };
   const st = styles[s] || { background: 'var(--bg-tertiary)', color: 'var(--text-muted)', border: 'var(--border-primary)' };
   return (

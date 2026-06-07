@@ -23,7 +23,7 @@ export function Users() {
   };
 
   const roleBadge = {
-    admin: { bg: 'var(--accent-light)', color: 'var(--accent)', border: 'var(--accent-border)' },
+    admin: { bg: 'var(--accent-light)', color: 'var(--accent-text)', border: 'var(--accent-border)' },
     rsync: { bg: 'var(--success-light)', color: 'var(--success-text)', border: 'var(--success-border)' },
     readonly: { bg: 'var(--bg-tertiary)', color: 'var(--text-muted)', border: 'var(--border-primary)' },
   };

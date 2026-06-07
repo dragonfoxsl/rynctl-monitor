@@ -19,8 +19,9 @@
   --text-muted: #64748B; /* AA 4.5:1 on white for small label text */
   --text-inverse: #FFFFFF;
 
-  --accent: #3B82F6;
+  --accent: #2563EB;
   --accent-hover: #2563EB;
+  --accent-text: #2563EB; /* darker accent for text — meets AA on light surfaces */
   --accent-light: rgba(59, 130, 246, 0.08);
   --accent-border: rgba(59, 130, 246, 0.3);
 
@@ -37,7 +38,7 @@
   --warning: #F59E0B;
   --warning-light: #FFFBEB;
   --warning-border: #FDE68A;
-  --warning-text: #D97706;
+  --warning-text: #B45309; /* darker amber — meets AA on warning-light */
 
   --purple: #8B5CF6;
   --purple-light: #F5F3FF;
@@ -82,8 +83,9 @@ html.dark {
   --text-muted: #94A3B8; /* AA contrast on dark surfaces for small label text */
   --text-inverse: #0F172A;
 
-  --accent: #3B82F6;
+  --accent: #2563EB;
   --accent-hover: #60A5FA;
+  --accent-text: #93C5FD; /* lighter accent for text on dark surfaces */
   --accent-light: rgba(59, 130, 246, 0.12);
   --accent-border: rgba(59, 130, 246, 0.3);
 

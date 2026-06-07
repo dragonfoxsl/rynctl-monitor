@@ -16,7 +16,7 @@ export function Dashboard() {
   const s = stats.value;
 
   const statCards = [
-    { label: 'Active Tasks', value: formatNumber(s.total_jobs), icon: 'jobs', color: 'var(--accent)', bg: 'var(--accent-light)' },
+    { label: 'Active Tasks', value: formatNumber(s.total_jobs), icon: 'jobs', color: 'var(--accent-text)', bg: 'var(--accent-light)' },
     { label: '24h Success Rate', value: s.total_runs > 0 ? `${Math.round((s.successful / s.total_runs) * 100)}%` : '—', icon: 'check', color: 'var(--success-text)', bg: 'var(--success-light)' },
     { label: 'Data Moved', value: formatBytes(s.data_transferred), icon: 'database', color: 'var(--purple-text)', bg: 'var(--purple-light)' },
     { label: 'Critical Alerts', value: formatNumber(s.failed), icon: 'alert', color: 'var(--error-text)', bg: 'var(--error-light)' },
@@ -147,7 +147,7 @@ export function Dashboard() {
             )}
             <div style={{ padding: '12px 20px' }}>
               <a href="#runs" onClick={e => { e.preventDefault(); page.value = 'runs'; window.location.hash = '#runs'; }}
-                style={{ fontSize: 13, color: 'var(--accent)', fontFamily: 'var(--font-sans)', textDecoration: 'none', fontWeight: 500 }}>
+                style={{ fontSize: 13, color: 'var(--accent-text)', fontFamily: 'var(--font-sans)', textDecoration: 'none', fontWeight: 500 }}>
                 View All Job History →
               </a>
             </div>

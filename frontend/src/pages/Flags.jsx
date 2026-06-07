@@ -23,14 +23,14 @@ export function Flags() {
                 display: 'inline-block', padding: '4px 14px', borderRadius: 'var(--radius-full)',
                 fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 600,
                 background: 'var(--accent-light)', border: '1px solid var(--accent)',
-                color: 'var(--accent)',
+                color: 'var(--accent-text)',
               }}>{f.flag}</span>
               <span style={{ fontFamily: 'var(--font-sans)', fontSize: 14, color: 'var(--text-primary)', fontWeight: 500 }}>{f.label}</span>
             </div>
             <p style={{ fontFamily: 'var(--font-sans)', fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.7, margin: 0 }}>{f.desc}</p>
             <div style={{ marginTop: 12 }}>
               <code style={{
-                fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--success-text)',
+                fontFamily: 'var(--font-mono)', fontSize: 12, color: '#4ADE80',
                 background: 'var(--bg-code)', padding: '6px 12px', borderRadius: 'var(--radius-sm)',
                 display: 'inline-block',
               }}>rsync {f.flag} /source/ /dest/</code>
@@ -90,7 +90,7 @@ export function Flags() {
           ].map(([cmd, desc]) => (
             <div key={cmd} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <code style={{
-                fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--success-text)',
+                fontFamily: 'var(--font-mono)', fontSize: 12, color: '#4ADE80',
                 background: 'var(--bg-code)', padding: '6px 12px', borderRadius: 'var(--radius-sm)',
                 minWidth: 200,
               }}>{cmd}</code>
@@ -105,7 +105,7 @@ export function Flags() {
 
 function Code({ children }) {
   return <code style={{
-    fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--accent)',
+    fontFamily: 'var(--font-mono)', fontSize: 12, color: '#93C5FD',
     background: 'var(--bg-code)', padding: '2px 6px', borderRadius: 4,
   }}>{children}</code>;
 }
@@ -130,7 +130,7 @@ function AdvancedCard({ flag, label, desc, examples }) {
         {examples.map(([cmd, desc]) => (
           <div key={cmd} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <code style={{
-              fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--success-text)',
+              fontFamily: 'var(--font-mono)', fontSize: 12, color: '#4ADE80',
               background: 'var(--bg-code)', padding: '6px 12px', borderRadius: 'var(--radius-sm)',
               minWidth: 280,
             }}>{cmd}</code>

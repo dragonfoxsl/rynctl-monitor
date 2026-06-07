@@ -109,7 +109,7 @@ export function Jobs() {
       {/* Stats Pills */}
       <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
         {[
-          { label: 'Total Jobs', value: totalJobs, color: 'var(--accent)', bg: 'var(--accent-light)' },
+          { label: 'Total Jobs', value: totalJobs, color: 'var(--accent-text)', bg: 'var(--accent-light)' },
           { label: 'Scheduled', value: scheduled, color: 'var(--success-text)', bg: 'var(--success-light)' },
           { label: 'Active', value: active, color: 'var(--purple-text)', bg: 'var(--purple-light)' },
           { label: 'Failed', value: failed, color: 'var(--error-text)', bg: 'var(--error-light)' },
@@ -187,7 +187,7 @@ export function Jobs() {
                           <span key={t} style={{
                             padding: '1px 8px', borderRadius: 'var(--radius-full)',
                             fontFamily: 'var(--font-sans)', fontSize: 11,
-                            background: 'var(--accent-light)', color: 'var(--accent)',
+                            background: 'var(--accent-light)', color: 'var(--accent-text)',
                             border: '1px solid var(--accent-border)',
                           }}>{t}</span>
                         ))}
@@ -195,14 +195,14 @@ export function Jobs() {
                     )}
                   </td>
                   <td style={{ padding: '14px 16px', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-secondary)' }}>
-                    {j.source} <span style={{ color: 'var(--accent)' }}>→</span> {j.destination}
+                    {j.source} <span style={{ color: 'var(--accent-text)' }}>→</span> {j.destination}
                   </td>
                   <td style={{ padding: '14px 16px' }}>
                     {sched ? (
                       <span style={{
                         padding: '3px 10px', borderRadius: 'var(--radius-full)', fontSize: 12,
                         fontFamily: 'var(--font-sans)', fontWeight: 500,
-                        background: 'var(--accent-light)', color: 'var(--accent)',
+                        background: 'var(--accent-light)', color: 'var(--accent-text)',
                       }}>
                         {describeCron(sched) || sched}
                       </span>

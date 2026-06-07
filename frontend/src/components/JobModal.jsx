@@ -1,3 +1,4 @@
+import { useEffect } from 'preact/hooks';
 import { modal } from '../lib/store';
 import { CreateJob } from '../pages/CreateJob';
 
@@ -8,8 +9,14 @@ import { CreateJob } from '../pages/CreateJob';
 export function JobModal({ job, onSaved }) {
   const close = () => { modal.value = null; };
 
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') close(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
   return (
-    <div style={{
+    <div role="dialog" aria-modal="true" aria-label={job ? 'Edit job' : 'Job'} style={{
       position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)',
       zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
       overflowY: 'auto', padding: '40px 20px',

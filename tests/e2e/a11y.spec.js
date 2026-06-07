@@ -26,11 +26,6 @@ test.describe("Accessibility (axe-core)", () => {
 
       const results = await new AxeBuilder({ page })
         .withTags(["wcag2a", "wcag2aa"])
-        // color-contrast is a known, tracked design-token debt (the accent blue
-        // and muted text fall below AA on light surfaces). Tracked in
-        // docs/TEST_PLAN.md (TC-A5); excluded here so this suite enforces the
-        // structural a11y rules already fixed (roles, names, labels, aria).
-        .disableRules(["color-contrast"])
         .analyze();
 
       const blocking = results.violations.filter(
