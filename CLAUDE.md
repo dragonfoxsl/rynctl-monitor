@@ -178,6 +178,7 @@ Schema auto-applied on first startup. New columns added via `ALTER TABLE IF NOT 
 - All API routes prefixed with `/api`
 - SQLite schema auto-migrates on startup via `database.py`
 - Frontend built separately → `static/dist/` → served by FastAPI with Brotli/Gzip
+- npm is the canonical package manager (`npm ci --legacy-peer-deps`, used by Docker/CI); `frontend/package-lock.json` is the source of truth
 - Hash-based routing (`#dashboard`, `#jobs`, etc.)
 - Preact Signals for reactive state (no Redux)
 - Forms use `document.getElementById()` pattern (not controlled components)

@@ -16,6 +16,7 @@ data/
 
 # Frontend
 frontend/node_modules/
+frontend/pnpm-lock.yaml
 static/dist/
 
 # Tests
