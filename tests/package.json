@@ -8,6 +8,7 @@
     "install-browsers": "npx playwright install --with-deps chromium"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.10.1",
     "@playwright/test": "1.49.0"
   }
 }

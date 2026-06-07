@@ -11,11 +11,26 @@ recent security hardening.
 |-------|------|----------|---------|
 | Backend unit | pytest | `tests/unit/` | `pip install -r requirements-dev.txt && pytest` (or `make backend-tests`) |
 | API / e2e | Playwright | `tests/e2e/` | `make e2e-tests` (builds image, starts app, runs specs) |
-| UI smoke | Playwright | `tests/e2e/ui.spec.js` | requires built frontend in `static/dist/` (auto-skipped if absent) |
+| Browser UI | Playwright | `tests/e2e/ui-flows.spec.js` | login, theme toggle, health pill, job create/run, ConfirmDialog Escape, switch a11y |
+| Accessibility | axe-core | `tests/e2e/a11y.spec.js` | axe scan of dashboard/jobs/runs/flags (serious+critical gate) |
+| UI smoke | Playwright | `tests/e2e/ui.spec.js` | login + nav visibility |
 | Manual UI | — | this doc, §4–§6 | run against `docker compose up -d` on `http://localhost:8080` |
 
-Environments: latest Chromium, Firefox, and WebKit. Test both **dark and light** themes
-and at least one narrow viewport (see §7).
+**Running the full browser suite in Docker (no local Chrome needed):**
+The Playwright image (`Dockerfile.test` `e2e-tests` stage) bundles the browsers, so
+`make e2e-tests` runs everything in-container. If host port 8080 is taken by another
+service, override the host port for all compose commands:
+
+```bash
+export RYNCTL_PORT=8087
+docker compose up -d rynctl-monitor
+docker compose --profile tools run --rm e2e-tests   # connects over the Docker network on :8080
+docker compose down
+```
+
+The axe scan **excludes `color-contrast`** (a known design-token debt; see §5 TC-A5);
+all other serious/critical violations fail the build. Browsers in CI: Chromium (the
+Docker image also carries Firefox/WebKit if the config adds projects).
 
 ## 2. Existing automated coverage (baseline)
 
@@ -93,17 +108,19 @@ Pass: forbidden controls are not rendered (or disabled) **and** direct API calls
 
 ## 5. Accessibility & keyboard (gaps from design critique — currently FAILING, treat as regression targets)
 
-- TC-A1: **Focus visibility** — Tab through every page; every interactive element (buttons, nav, table actions, toggles) shows a visible focus ring. *Currently fails: no `:focus-visible` in `index.css`.*
-- TC-A2: **Custom controls** — the schedule/SSH toggles and file-browser rows are keyboard-operable (Space/Enter) and expose `role`/`aria-checked`/`aria-expanded`. *Currently fails: `<div onClick>`.*
-- TC-A3: **Accessible names** — icon-only buttons (Run/Edit/Clone/Delete, log viewer, modal close) have `aria-label`, not just `title`.
-- TC-A4: **Modal dismissal** — `ConfirmDialog` and modals close on `Escape` and backdrop click. *Currently fails for `ConfirmDialog`.*
-- TC-A5: **Contrast** — `--text-muted` label text meets WCAG AA 4.5:1 in both themes. *Currently ~2.6:1 on white.*
-- TC-A6: **Reduced motion** — with `prefers-reduced-motion: reduce`, keyframe animations are suppressed. *Currently no guard.*
+- TC-A1: **Focus visibility** — every interactive element shows a `:focus-visible` ring. *Done (global rule in `index.css`); covered by axe.*
+- TC-A2: **Custom controls** — schedule/SSH toggles are `role="switch"` and keyboard-operable; collapsible headers expose `aria-expanded`. *Done; `ui-flows.spec.js` asserts the switch via keyboard. Remaining: FileBrowser rows still `<div onClick>` (see §9).*
+- TC-A3: **Accessible names** — icon-only buttons (Run/Edit/Clone/Delete, log viewer, Users edit/delete, logout) have `aria-label`. *Done for Jobs/Runs/Users; `ui-flows.spec.js` asserts Jobs actions. Remaining: modal close `x` buttons.*
+- TC-A4: **Modal dismissal** — `ConfirmDialog` closes on `Escape` and backdrop. *Done; `ui-flows.spec.js` asserts Escape. Remaining: JobModal/UserModal/FileBrowser Escape + focus trap.*
+- TC-A5: **Contrast** — text meets WCAG AA 4.5:1. *Partial: `--text-muted` raised to AA, but the accent blue used for text and some pills still fail. **Excluded from the axe gate** in `a11y.spec.js`; tracked here as the top remaining a11y item.*
+- TC-A6: **Reduced motion** — `prefers-reduced-motion: reduce` suppresses animations. *Done (global media query).*
+
+The axe scan (`a11y.spec.js`) automates TC-A1/A3/A4 (and structural rules) on the read pages, failing on any serious/critical violation except `color-contrast`.
 
 ## 6. UI state & resilience cases
 
-- TC-ST1: **Loading** — slow network (throttle): tables show skeletons, not an empty flash then pop-in. *GAP: no skeletons.*
-- TC-ST2: **Live status (GAP-1)** — a job moving running→success/failed updates the UI within ~10s without manual reload. *GAP: no polling.*
+- TC-ST1: **Loading** — tables show skeleton rows, not an empty flash then pop-in. *Done (Jobs/Runs).*
+- TC-ST2: **Live status** — a running job updates without a manual reload. *Done: Jobs/Runs poll every 5s while a run is in progress (Dashboard not yet).*
 - TC-ST3: **Error** — backend 500 / network drop surfaces a dismissable error with a retry path, not a 3.5s auto-vanishing toast.
 - TC-ST4: **Unsaved changes** — navigating away from a dirty Create/Edit form prompts before discarding. *GAP: no guard.*
 - TC-ST5: **Session expiry** — expired/invalid cookie redirects to login on next action (no infinite spinner).
