@@ -11,6 +11,7 @@ import { showToast } from '../components/Toast';
 export function Jobs() {
   const [loading, setLoading] = useState(jobs.value === null || jobs.value === undefined);
   const [healthy, setHealthy] = useState(null);
+  const [sort, setSort] = useState('name');
 
   const loadJobs = () => api('GET', '/api/jobs')
     .then(j => { jobs.value = j || []; })
@@ -31,6 +32,13 @@ export function Jobs() {
       || (j.source || '').toLowerCase().includes(q)
       || (j.destination || '').toLowerCase().includes(q)
       || (j.tags || '').toLowerCase().includes(q);
+  });
+
+  const sorted = [...filtered].sort((a, b) => {
+    if (sort === 'name') return (a.name || '').localeCompare(b.name || '');
+    if (sort === 'last_run') return (b.last_run || '').localeCompare(a.last_run || '');
+    if (sort === 'status') return (a.last_status || '').localeCompare(b.last_status || '');
+    return 0;
   });
 
   const all = jobs.value || [];
@@ -141,7 +149,16 @@ export function Jobs() {
           </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: 13, color: 'var(--text-muted)', fontFamily: 'var(--font-sans)' }}>Sort by: Name</span>
+          <label style={{ fontSize: 13, color: 'var(--text-muted)', fontFamily: 'var(--font-sans)' }} for="jobs-sort">Sort by</label>
+          <select id="jobs-sort" value={sort} onChange={e => setSort(e.target.value)} style={{
+            padding: '8px 10px', background: 'var(--bg-input)', border: '1px solid var(--border-input)',
+            borderRadius: 'var(--radius-md)', color: 'var(--text-primary)', fontFamily: 'var(--font-sans)',
+            fontSize: 13, cursor: 'pointer',
+          }}>
+            <option value="name">Name</option>
+            <option value="last_run">Last run</option>
+            <option value="status">Status</option>
+          </select>
           <SearchInput value={jobSearch.value} onInput={v => { jobSearch.value = v; }} placeholder="Search jobs..." />
         </div>
       </div>
@@ -173,7 +190,7 @@ export function Jobs() {
                 ))}
               </tr>
             ))}
-            {filtered.map(j => {
+            {sorted.map(j => {
               const sched = j.schedule_cron;
               return (
                 <tr key={j.id} style={{ borderBottom: '1px solid var(--border-secondary)', transition: 'background 0.1s' }}

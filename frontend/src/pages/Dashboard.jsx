@@ -7,19 +7,26 @@ import { showToast } from '../components/Toast';
 import { Icon } from '../lib/icons';
 
 export function Dashboard() {
-  useEffect(() => {
-    Promise.all([api('GET', '/api/stats'), api('GET', '/api/runs/recent')])
-      .then(([s, r]) => { stats.value = s || {}; runs.value = r || []; })
-      .catch(e => showToast(e.message, 'error'));
-  }, []);
+  const load = () => Promise.all([api('GET', '/api/stats'), api('GET', '/api/runs/recent')])
+    .then(([s, r]) => { stats.value = s || {}; runs.value = r || []; })
+    .catch(e => showToast(e.message, 'error'));
+
+  useEffect(() => { load(); }, []);
 
   const s = stats.value;
 
+  // Keep the dashboard live while jobs are running.
+  useEffect(() => {
+    if (!(s.running > 0)) return;
+    const t = setInterval(load, 5000);
+    return () => clearInterval(t);
+  }, [s.running]);
+
   const statCards = [
-    { label: 'Active Tasks', value: formatNumber(s.total_jobs), icon: 'jobs', color: 'var(--accent-text)', bg: 'var(--accent-light)' },
-    { label: '24h Success Rate', value: s.total_runs > 0 ? `${Math.round((s.successful / s.total_runs) * 100)}%` : '—', icon: 'check', color: 'var(--success-text)', bg: 'var(--success-light)' },
-    { label: 'Data Moved', value: formatBytes(s.data_transferred), icon: 'database', color: 'var(--purple-text)', bg: 'var(--purple-light)' },
-    { label: 'Critical Alerts', value: formatNumber(s.failed), icon: 'alert', color: 'var(--error-text)', bg: 'var(--error-light)' },
+    { label: 'Total Jobs', value: formatNumber(s.total_jobs), icon: 'jobs', color: 'var(--accent-text)', bg: 'var(--accent-light)' },
+    { label: 'Success Rate', value: s.total_runs > 0 ? `${Math.round((s.successful / s.total_runs) * 100)}%` : '—', icon: 'check', color: 'var(--success-text)', bg: 'var(--success-light)' },
+    { label: 'Data Transferred', value: formatBytes(s.data_transferred), icon: 'database', color: 'var(--purple-text)', bg: 'var(--purple-light)' },
+    { label: 'Failed Runs', value: formatNumber(s.failed), icon: 'alert', color: 'var(--error-text)', bg: 'var(--error-light)' },
   ];
 
   return (
@@ -28,10 +35,10 @@ export function Dashboard() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28 }}>
         <div>
           <h1 style={{ fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 26, margin: 0, color: 'var(--text-primary)' }}>
-            System Dashboard
+            Dashboard
           </h1>
           <p style={{ fontFamily: 'var(--font-sans)', fontSize: 14, color: 'var(--text-muted)', margin: '4px 0 0' }}>
-            Monitoring {formatNumber(s.total_jobs || 0)} synchronization tasks
+            Monitoring {formatNumber(s.total_jobs || 0)} rsync job{(s.total_jobs || 0) === 1 ? '' : 's'}
           </p>
         </div>
         <button onClick={() => { page.value = 'create-job'; window.location.hash = '#create-job'; }} style={{
@@ -80,7 +87,7 @@ export function Dashboard() {
             <span style={{ fontFamily: 'var(--font-sans)', fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>
               Job Performance
             </span>
-            <span style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-sans)' }}>Last 24 hours</span>
+            <span style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-sans)' }}>All time</span>
           </div>
           <div style={{ padding: 20 }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>

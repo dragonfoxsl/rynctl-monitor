@@ -55,7 +55,7 @@ export function Sidebar({ onNavigate }) {
               Rsync Monitor
             </div>
             <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              System Control
+              Job Manager
             </div>
           </div>
         </div>

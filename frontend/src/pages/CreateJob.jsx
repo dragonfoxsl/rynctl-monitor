@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'preact/hooks';
+import { useState, useEffect, useCallback, useRef } from 'preact/hooks';
 import { Icon } from '../lib/icons';
 import { ALL_FLAGS, DEFAULT_FLAGS } from '../lib/flags';
 import { buildRsyncCommand, describeCron } from '../lib/utils';
@@ -260,6 +260,7 @@ export function CreateJob({ job, onSaved }) {
     : [...DEFAULT_FLAGS];
 
   const [selectedFlags, setSelectedFlags] = useState(initialFlags);
+  const dirtyRef = useRef(false);
   const [preview, setPreview] = useState('rsync -avh /source/ /dest/');
   const [cronDesc, setCronDesc] = useState('');
   const [showAllFlags, setShowAllFlags] = useState(false);
@@ -338,6 +339,7 @@ export function CreateJob({ job, onSaved }) {
   };
 
   const discard = () => {
+    if (dirtyRef.current && !window.confirm('Discard unsaved changes?')) return;
     if (onSaved) { modal.value = null; }
     else { page.value = 'jobs'; window.location.hash = '#jobs'; }
   };
@@ -356,7 +358,7 @@ export function CreateJob({ job, onSaved }) {
   const extraFlags = ALL_FLAGS.filter(f => !quickFlags.some(qf => qf.flag === f.flag));
 
   return (
-    <div onInput={updatePreview}>
+    <div onInput={(e) => { dirtyRef.current = true; updatePreview(e); }}>
       {/* Page Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
         <div>
