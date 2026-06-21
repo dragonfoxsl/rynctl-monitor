@@ -24,6 +24,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Check Playwright package and image versions match
+        run: |
+          pkg=$(node -p "require('./tests/package.json').devDependencies['@playwright/test']")
+          img=$(grep -oP 'mcr\.microsoft\.com/playwright:v\K[0-9.]+' Dockerfile.test)
+          echo "package @playwright/test=$pkg  image=$img"
+          if [ "$pkg" != "$img" ]; then
+            echo "::error::Playwright version drift: tests/package.json=$pkg but Dockerfile.test image=$img. Bump the image tag in Dockerfile.test to match."
+            exit 1
+          fi
       - name: Run browser + API suite in Docker
         run: make e2e-tests
       - name: Tear down
