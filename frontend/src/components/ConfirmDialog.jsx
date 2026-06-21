@@ -1,4 +1,4 @@
-import { useEffect } from 'preact/hooks';
+import { useLayoutEffect } from 'preact/hooks';
 import { confirmDialog } from '../lib/store';
 import { Icon } from '../lib/icons';
 
@@ -7,8 +7,11 @@ export function ConfirmDialog() {
 
   const close = () => { confirmDialog.value = null; };
 
-  // Escape-to-dismiss, registered whenever a dialog is open
-  useEffect(() => {
+  // Escape-to-dismiss, registered whenever a dialog is open. useLayoutEffect
+  // (not useEffect) so the listener is attached synchronously in the same
+  // commit that renders the dialog — otherwise a fast Escape keypress can
+  // arrive before a post-paint effect runs and the dialog stays open.
+  useLayoutEffect(() => {
     if (!d) return;
     const onKey = (e) => { if (e.key === 'Escape') close(); };
     window.addEventListener('keydown', onKey);
