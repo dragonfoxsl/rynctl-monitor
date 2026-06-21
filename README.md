@@ -1,14 +1,23 @@
-# Rynctl Monitor
+<h1 align="center">Rynctl Monitor</h1>
 
-[![Build](https://github.com/dragonfoxsl/rynctl-monitor/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/dragonfoxsl/rynctl-monitor/actions/workflows/docker-publish.yml)
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
-[![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB.svg?logo=python&logoColor=white)](https://python.org)
-[![FastAPI](https://img.shields.io/badge/FastAPI-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
-[![Docker](https://img.shields.io/badge/Docker-ready-2496ED.svg?logo=docker&logoColor=white)](Dockerfile)
-[![GHCR](https://img.shields.io/badge/GHCR-package-blue.svg?logo=github)](https://github.com/dragonfoxsl/rynctl-monitor/pkgs/container/rynctl-monitor)
-[![SQLite](https://img.shields.io/badge/SQLite-003B57.svg?logo=sqlite&logoColor=white)](https://sqlite.org)
-[![Preact](https://img.shields.io/badge/Preact-673AB8.svg?logo=preact&logoColor=white)](https://preactjs.com)
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/D5X721S5GY)
+<p align="center">
+  <a href="https://github.com/dragonfoxsl/rynctl-monitor/actions/workflows/docker-publish.yml"><img src="https://github.com/dragonfoxsl/rynctl-monitor/actions/workflows/docker-publish.yml/badge.svg" alt="Build"/></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License: Apache 2.0"/></a>
+  <img src="https://img.shields.io/badge/Python-3.10%2B-3776AB.svg?logo=python&logoColor=white" alt="Python 3.10+"/>
+  <img src="https://img.shields.io/badge/FastAPI-009688.svg?logo=fastapi&logoColor=white" alt="FastAPI"/>
+  <img src="https://img.shields.io/badge/Docker-ready-2496ED.svg?logo=docker&logoColor=white" alt="Docker"/>
+  <a href="https://github.com/dragonfoxsl/rynctl-monitor/pkgs/container/rynctl-monitor"><img src="https://img.shields.io/badge/GHCR-package-blue.svg?logo=github" alt="GHCR"/></a>
+  <img src="https://img.shields.io/badge/SQLite-003B57.svg?logo=sqlite&logoColor=white" alt="SQLite"/>
+  <img src="https://img.shields.io/badge/Preact-673AB8.svg?logo=preact&logoColor=white" alt="Preact"/>
+</p>
+
+<p align="center">
+  <a href="https://ko-fi.com/D5X721S5GY">
+    <img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Support me on Ko-fi"/>
+  </a>
+</p>
+
+<br>
 
 A self-hosted web UI for managing, scheduling, and monitoring rsync jobs on Linux servers. Runs in Docker or standalone, pairs with [rynctl.com](https://rynctl.com).
 
