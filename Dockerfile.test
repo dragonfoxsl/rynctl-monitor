@@ -38,7 +38,7 @@ COPY frontend/ ./
 CMD ["npm", "run", "build"]
 
 # Stage 5: Playwright test runner
-FROM mcr.microsoft.com/playwright:v1.49.0-noble AS e2e-tests
+FROM mcr.microsoft.com/playwright:v1.61.0-noble AS e2e-tests
 WORKDIR /workspace
 COPY tests/package.json ./tests/package.json
 RUN cd tests && npm install
