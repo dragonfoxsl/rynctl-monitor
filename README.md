@@ -8,6 +8,7 @@
 [![GHCR](https://img.shields.io/badge/GHCR-package-blue.svg?logo=github)](https://github.com/dragonfoxsl/rynctl-monitor/pkgs/container/rynctl-monitor)
 [![SQLite](https://img.shields.io/badge/SQLite-003B57.svg?logo=sqlite&logoColor=white)](https://sqlite.org)
 [![Preact](https://img.shields.io/badge/Preact-673AB8.svg?logo=preact&logoColor=white)](https://preactjs.com)
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/D5X721S5GY)
 
 A self-hosted web UI for managing, scheduling, and monitoring rsync jobs on Linux servers. Runs in Docker or standalone, pairs with [rynctl.com](https://rynctl.com).
 
