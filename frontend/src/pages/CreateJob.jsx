@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'preact/hooks';
+import { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'preact/hooks';
 import { Icon } from '../lib/icons';
 import { ALL_FLAGS, DEFAULT_FLAGS } from '../lib/flags';
 import { buildRsyncCommand, describeCron } from '../lib/utils';
@@ -90,7 +90,9 @@ function FileBrowser({ initialPath, host, port, sshKey, onSelect, onClose }) {
   }, [host, port, sshKey]);
 
   useEffect(() => { browse(path); }, []);
-  useEffect(() => {
+  // useLayoutEffect so the Escape listener is attached in the same synchronous
+  // commit that renders the browser, before it can be observed/interacted with.
+  useLayoutEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);

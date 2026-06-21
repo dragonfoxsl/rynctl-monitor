@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'preact/hooks';
+import { useLayoutEffect, useRef } from 'preact/hooks';
 import { Icon } from '../lib/icons';
 
 const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
@@ -11,7 +11,10 @@ export function Modal({ title, onClose, children, footer, maxWidth = 440, zIndex
   const panelRef = useRef(null);
   const restoreRef = useRef(null);
 
-  useEffect(() => {
+  // useLayoutEffect so focus management and the Escape/Tab-trap listener are
+  // applied synchronously in the same commit that renders the dialog, before
+  // it can be observed/interacted with.
+  useLayoutEffect(() => {
     restoreRef.current = document.activeElement;
     const panel = panelRef.current;
     panel?.querySelector(FOCUSABLE)?.focus();

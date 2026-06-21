@@ -1,4 +1,4 @@
-import { useEffect } from 'preact/hooks';
+import { useLayoutEffect } from 'preact/hooks';
 import { modal } from '../lib/store';
 import { CreateJob } from '../pages/CreateJob';
 
@@ -9,7 +9,9 @@ import { CreateJob } from '../pages/CreateJob';
 export function JobModal({ job, onSaved }) {
   const close = () => { modal.value = null; };
 
-  useEffect(() => {
+  // useLayoutEffect so the Escape listener is attached in the same synchronous
+  // commit that renders the modal, before it can be observed/interacted with.
+  useLayoutEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') close(); };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
