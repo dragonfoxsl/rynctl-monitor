@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException, Request
 from backend.database import get_db, log_audit
 from backend.scheduler import schedule_job
 from backend.security import require_auth, require_role
-from backend.validation import validate_cron_expression
+from backend.validation import validate_cron_expression, validate_job_payload
 
 router = APIRouter(prefix="/api", tags=["crontab"])
 
@@ -67,6 +67,14 @@ async def import_crontab_entry(request: Request):
         else:
             custom_flags.append(token)
 
+    body = {
+        "source": source,
+        "destination": destination,
+        "flags": " ".join(flags) or "-avh",
+        "custom_flags": " ".join(custom_flags),
+    }
+    validate_job_payload(body)
+
     conn = get_db()
     try:
         cur = conn.execute(
@@ -75,10 +83,10 @@ async def import_crontab_entry(request: Request):
                VALUES (?,?,?,?,?,?,?,?)""",
             (
                 f"Imported crontab job {source} -> {destination}",
-                source,
-                destination,
-                " ".join(flags) or "-avh",
-                " ".join(custom_flags),
+                body["source"],
+                body["destination"],
+                body["flags"],
+                body["custom_flags"],
                 cron_expr,
                 1,
                 user["id"],

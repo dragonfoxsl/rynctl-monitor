@@ -3,6 +3,7 @@ Validation helpers for cron expressions and local path browsing.
 """
 
 from pathlib import Path
+import shlex
 
 from fastapi import HTTPException
 from apscheduler.triggers.cron import CronTrigger
@@ -40,7 +41,11 @@ def validate_ssh_port(port: str) -> str:
 def validate_rsync_flags(*flag_strings: str) -> None:
     """Reject user-supplied rsync flags that enable command execution."""
     for raw in flag_strings:
-        for token in (raw or "").split():
+        try:
+            tokens = shlex.split(raw or "")
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=f"Invalid rsync options: {exc}") from exc
+        for token in tokens:
             name = token.split("=", 1)[0]
             if name in _FORBIDDEN_RSYNC_OPTS:
                 raise HTTPException(
@@ -49,10 +54,21 @@ def validate_rsync_flags(*flag_strings: str) -> None:
                 )
 
 
+def validate_non_option_value(field: str, value: str) -> str:
+    """Reject values that subprocess consumers could interpret as CLI options."""
+    cleaned = (value or "").strip()
+    if cleaned.startswith("-"):
+        raise HTTPException(status_code=400, detail=f"{field} must not start with '-'")
+    return cleaned
+
+
 def validate_job_payload(body: dict) -> dict:
     """Apply security validation to a job payload in place. Returns the body."""
     if "ssh_port" in body:
         body["ssh_port"] = validate_ssh_port(body.get("ssh_port", ""))
+    for field in ("source", "destination", "remote_host", "ssh_key", "bandwidth_limit"):
+        if field in body:
+            body[field] = validate_non_option_value(field, body.get(field, ""))
     validate_rsync_flags(body.get("flags", ""), body.get("custom_flags", ""))
     return body
 

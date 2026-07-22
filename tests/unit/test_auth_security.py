@@ -20,10 +20,16 @@ def test_login_and_me(client):
     assert me.json()["username"] == "admin"
 
 
+def test_login_response_does_not_include_raw_session_token(client):
+    res = client.post("/api/auth/login", json={"username": "admin", "password": "admin"})
+    assert res.status_code == 200
+    assert "token" not in res.json()
+
+
 def test_session_cookie_is_signed_not_raw_token(client):
     res = client.post("/api/auth/login", json={"username": "admin", "password": "admin"})
-    raw_token = res.json()["token"]
     cookie_value = client.cookies.get("session_token")
+    raw_token = cookie_value.rpartition(".")[0]
     # The cookie carries the token plus an HMAC signature, not the bare token.
     assert cookie_value != raw_token
     assert cookie_value.startswith(raw_token + ".")
@@ -31,7 +37,7 @@ def test_session_cookie_is_signed_not_raw_token(client):
 
 def test_unsigned_or_tampered_cookie_is_rejected(client):
     res = client.post("/api/auth/login", json={"username": "admin", "password": "admin"})
-    raw_token = res.json()["token"]
+    raw_token = client.cookies.get("session_token").rpartition(".")[0]
 
     # A raw DB token (as if leaked from the database) without a valid signature
     # must not be accepted as a browser cookie.

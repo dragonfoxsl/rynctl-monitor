@@ -47,7 +47,7 @@ export function Login() {
         </div>
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: 16 }}>
-            <label style={{
+            <label for="login-user" style={{
               display: 'block', fontFamily: 'var(--font-sans)', fontSize: 13,
               fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6,
             }}>Username</label>
@@ -59,7 +59,7 @@ export function Login() {
             }} />
           </div>
           <div style={{ marginBottom: 24 }}>
-            <label style={{
+            <label for="login-pass" style={{
               display: 'block', fontFamily: 'var(--font-sans)', fontSize: 13,
               fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6,
             }}>Password</label>

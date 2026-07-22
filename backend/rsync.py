@@ -6,6 +6,7 @@ supports automatic retries and webhook notifications.
 
 import logging
 import re
+import shlex
 import subprocess
 import threading
 from pathlib import Path
@@ -48,7 +49,7 @@ def build_rsync_command(job: dict) -> list[str]:
         cmd.extend(["--bwlimit", job["bandwidth_limit"]])
 
     if job.get("custom_flags"):
-        cmd.extend(job["custom_flags"].split())
+        cmd.extend(shlex.split(job["custom_flags"]))
 
     # Always append --stats for metric parsing
     cmd.append("--stats")

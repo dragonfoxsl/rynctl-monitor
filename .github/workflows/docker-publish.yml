@@ -13,12 +13,43 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            frontend/package-lock.json
+            tests/package-lock.json
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends rsync openssh-client
-      - run: pip install -r requirements-dev.txt
-      - run: pytest
+      - name: Install system deps
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends rsync openssh-client
+      - name: Install Python deps
+        run: pip install -r requirements-dev.txt
+      - name: Run backend unit tests
+        run: pytest
+      - name: Audit and build frontend
+        working-directory: frontend
+        run: |
+          npm ci --legacy-peer-deps
+          npm audit --audit-level=high
+          npm run build
+      - name: Audit e2e package
+        working-directory: tests
+        run: |
+          npm ci
+          npm audit --audit-level=high
+      - name: Run browser + API suite in Docker
+        run: |
+          docker compose up -d rynctl-monitor
+          docker compose exec -T -u 10001 rynctl-monitor sh -lc 'rm -rf /tmp/rynctl-scheduler-src /tmp/rynctl-scheduler-dst && mkdir -p /tmp/rynctl-scheduler-src /tmp/rynctl-scheduler-dst && printf scheduler-proof > /tmp/rynctl-scheduler-src/proof.txt'
+          docker compose --profile tools build e2e-tests
+          docker compose --profile tools run --rm e2e-tests
+          docker compose exec -T rynctl-monitor sh -lc 'test "$(cat /tmp/rynctl-scheduler-dst/proof.txt)" = "scheduler-proof"'
+      - name: Tear down
+        if: always()
+        run: docker compose down -v || true
 
   build-and-push:
     needs: test

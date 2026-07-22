@@ -20,6 +20,7 @@ Test case IDs are stable (`TC-<area>-<n>`) for traceability. Status tags:
 | Unit (backend) | pytest | `tests/unit/` | fast | pure logic, validation, security helpers, job-runner state |
 | Integration (API) | Playwright `request` | `tests/e2e/*.spec.js` | medium | HTTP contract, auth, RBAC, DB side effects |
 | Browser (UI) | Playwright + Chromium | `tests/e2e/ui-flows.spec.js` | slow | rendered SPA behavior, interactions, routing |
+| Scheduler smoke | Playwright + APScheduler + rsync | `tests/e2e/scheduler.spec.js` | slow | real cron fire creates a successful rsync run |
 | Accessibility | axe-core | `tests/e2e/a11y.spec.js` | slow | WCAG 2 A/AA structural rules |
 | Manual | this doc | §§ below | — | exploratory, visual, cross-browser, ops |
 
@@ -34,7 +35,9 @@ make e2e-tests
 # If host port 8080 is busy, override for ALL compose commands:
 export RYNCTL_PORT=8087
 docker compose up -d rynctl-monitor
+docker compose exec -T -u 10001 rynctl-monitor sh -lc 'rm -rf /tmp/rynctl-scheduler-src /tmp/rynctl-scheduler-dst && mkdir -p /tmp/rynctl-scheduler-src /tmp/rynctl-scheduler-dst && printf scheduler-proof > /tmp/rynctl-scheduler-src/proof.txt'
 docker compose --profile tools run --rm e2e-tests
+docker compose exec -T rynctl-monitor sh -lc 'test "$(cat /tmp/rynctl-scheduler-dst/proof.txt)" = "scheduler-proof"'
 docker compose down
 
 # Frontend build check
@@ -77,7 +80,8 @@ make verify                 # frontend-build + backend-tests + e2e-tests
 - Scheduling: cron register/replace/unregister on create/update/delete.
 
 **Playwright API:** auth, health, jobs CRUD + preview + runs + tags, stats.
-**Playwright UI:** login, sidebar nav, theme toggle, health pill, job create→appears, ConfirmDialog Escape, icon-button names, keyboard switch.
+**Playwright UI:** login, associated login labels, sidebar nav, theme toggle, health pill, job create→appears, ConfirmDialog Escape, icon-button names, keyboard switch.
+**Playwright scheduler:** scheduled cron fire copies a file with rsync and records a successful run.
 **axe-core:** dashboard/jobs/runs/flags — full serious+critical gate including `color-contrast`.
 
 ---
@@ -112,10 +116,10 @@ Three roles: `admin`, `rsync`, `readonly`. For each action verify **both** the U
 - TC-AUTH-05 **[auto]** Expired session → 401 on next request; row deleted.
 - TC-AUTH-06 **[auto]** Raw DB token used as cookie (no signature) → 401 (cannot be replayed).
 - TC-AUTH-07 **[auto]** Tampered cookie signature → 401.
-- TC-AUTH-08 Bearer token (`Authorization: Bearer <raw>`) still authenticates API clients (documented path).
+- TC-AUTH-08 Login response does not expose the raw session token; browser auth uses the signed `HttpOnly` cookie.
 - TC-AUTH-09 Logout deletes the session row and clears the cookie; the old token no longer authenticates.
 - TC-AUTH-10 **[auto]** Password/CSRF comparisons are constant-time (`secrets.compare_digest`).
-- TC-AUTH-11 Concurrent sessions: logging in twice yields two valid tokens; logout of one does not invalidate the other.
+- TC-AUTH-11 Concurrent sessions: logging in twice yields two valid sessions; logout of one does not invalidate the other.
 - TC-AUTH-12 `RYNCTL_SECRET` change invalidates all existing signed cookies (forces re-login) — expected on secret rotation.
 - TC-AUTH-13 **[auto]** Fresh DB seeds admin from `RYNCTL_ADMIN_PASSWORD`; default `admin/admin` only when unset (logs a warning).
 
@@ -129,7 +133,7 @@ Three roles: `admin`, `rsync`, `readonly`. For each action verify **both** the U
 - TC-SEC-04 **[auto]** Rate limiter: exceeding `RYNCTL_RATE_LIMIT_RPM` in 60s → 429 with `Retry-After`.
 - TC-SEC-05 **[auto]** Rate-limiter memory does not grow unbounded across distinct IPs (idle eviction).
 - TC-SEC-06 Rate limit applies only to `/api/*`, not static assets.
-- TC-SEC-07 **[gap]** Security response headers present on all responses: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`, a restrictive `Content-Security-Policy`, and `Strict-Transport-Security` when HTTPS. *Currently none are set — see §15.*
+- TC-SEC-07 **[auto]** Security response headers present on browser responses: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`, and a restrictive `Content-Security-Policy`.
 - TC-SEC-08 Middleware order observable: RequestLogging → RateLimit → CSRF (a 429 is logged; a CSRF 403 is rate-limited).
 
 ---
@@ -179,7 +183,7 @@ Three roles: `admin`, `rsync`, `readonly`. For each action verify **both** the U
 - TC-SCH-03 **[auto]** Disabling the schedule (or clearing cron) unregisters the job.
 - TC-SCH-04 **[auto]** Deleting a job unschedules it.
 - TC-SCH-05 On startup, `load_schedules()` registers all enabled jobs from the DB.
-- TC-SCH-06 A scheduled fire enqueues via the runner (not a direct thread) and respects dedupe.
+- TC-SCH-06 **[auto]** A scheduled fire enqueues via the runner and creates a successful rsync run.
 - TC-SCH-07 Hourly `session_cleanup` job runs and deletes expired sessions.
 - TC-SCH-08 Cron in server timezone (UTC) — verify next-run time matches `describeCron` and TZ assumptions.
 
@@ -204,7 +208,7 @@ For each: happy path, not-found, unauthorized, malformed body.
 
 ## 10. Frontend functional (by page)
 
-**Login** — TC-UI-LOGIN-01 invalid creds error; -02 success → dashboard; -03 default-credentials hint shows only while password is default **[gap: always shown]**.
+**Login** — TC-UI-LOGIN-01 invalid creds error; -02 success → dashboard; -03 visible labels are associated with inputs; -04 default-credentials hint shows only while password is default **[gap: always shown]**.
 
 **Dashboard** — TC-UI-DASH-01 stat cards match `/api/stats`; -02 chart renders with data and with zero runs; -03 recent-runs link to logs; -04 **[gap]** live refresh (Dashboard does not poll yet).
 

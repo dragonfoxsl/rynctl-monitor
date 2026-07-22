@@ -3,7 +3,7 @@ const { test, expect } = require("@playwright/test");
 const { login, csrfHeaders } = require("./helpers");
 
 test.describe("Authentication API", () => {
-  test("login with valid credentials returns token and user info", async ({
+  test("login with valid credentials sets cookie and returns user info", async ({
     request,
   }) => {
     const res = await request.post("/api/auth/login", {
@@ -11,9 +11,10 @@ test.describe("Authentication API", () => {
     });
     expect(res.ok()).toBeTruthy();
     const body = await res.json();
-    expect(body).toHaveProperty("token");
+    expect(body).not.toHaveProperty("token");
     expect(body.username).toBe("admin");
     expect(body.role).toBe("admin");
+    expect(res.headers()["set-cookie"]).toContain("session_token=");
   });
 
   test("login with wrong password returns 401", async ({ request }) => {

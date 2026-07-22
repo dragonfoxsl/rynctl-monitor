@@ -79,6 +79,28 @@ def test_dangerous_remote_shell_flag_in_flags_is_rejected(client, auth_headers):
     assert res.status_code == 400
 
 
+def test_crontab_import_rejects_dangerous_rsync_options(client, auth_headers):
+    res = client.post(
+        "/api/crontab/import",
+        json={
+            "entry": "* * * * * rsync -avh --rsync-path='sh -c id' /tmp/src /tmp/dst",
+        },
+        headers=auth_headers,
+    )
+    assert res.status_code == 400
+    assert "not allowed" in res.json()["detail"].lower()
+
+
+def test_dash_prefixed_source_path_is_rejected(client, auth_headers):
+    res = client.post(
+        "/api/jobs",
+        json={"name": "dash-source", "source": "--server", "destination": "/tmp/dst"},
+        headers=auth_headers,
+    )
+    assert res.status_code == 400
+    assert "source" in res.json()["detail"].lower()
+
+
 def test_numeric_ssh_port_is_accepted(client, auth_headers):
     res = client.post(
         "/api/jobs",

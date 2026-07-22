@@ -4,7 +4,6 @@ services:
       context: .
       dockerfile: Dockerfile
       target: production
-      no_cache: true
     container_name: rynctl-monitor
     ports:
       - "${RYNCTL_PORT:-8080}:8080"
@@ -15,11 +14,22 @@ services:
       # - /var/www:/var/www:ro
       # - /backups:/backups
       # Mount SSH keys for remote rsync (uncomment and edit):
-      # - ~/.ssh/id_rsa:/root/.ssh/id_rsa:ro
-      # - ~/.ssh/known_hosts:/root/.ssh/known_hosts:ro
+      # - ~/.ssh/id_rsa:/home/rynctl/.ssh/id_rsa:ro
+      # - ~/.ssh/known_hosts:/home/rynctl/.ssh/known_hosts:ro
     environment:
       - RYNCTL_PORT=8080
       - RYNCTL_SECRET=${RYNCTL_SECRET:-change-me-to-a-random-secret}
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+    security_opt:
+      - no-new-privileges:true
     restart: unless-stopped
 
   backend-tests:

@@ -81,7 +81,6 @@ async def login(payload: LoginRequest):
     log_audit({"id": user["id"], "username": user["username"]}, "login", "user", str(user["id"]))
 
     response = JSONResponse({
-        "token": token,
         "username": user["username"],
         "role": user["role"],
     })

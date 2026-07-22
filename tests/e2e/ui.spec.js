@@ -18,6 +18,14 @@ test.describe("UI smoke tests", () => {
     ).toBeVisible({ timeout: 10000 });
   });
 
+  test("login fields are associated with their visible labels", async ({ page }) => {
+    test.skip(!hasBuiltFrontend, "built frontend assets are required for UI smoke tests");
+    await page.goto("/");
+
+    await expect(page.getByLabel(/username/i)).toBeVisible();
+    await expect(page.getByLabel(/password/i)).toBeVisible();
+  });
+
   test("login via UI and see dashboard", async ({ page }) => {
     test.skip(!hasBuiltFrontend, "built frontend assets are required for UI smoke tests");
     await page.goto("/");

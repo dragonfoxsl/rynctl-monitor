@@ -14,7 +14,7 @@ from backend.database import get_db, log_audit
 from backend.models import BrowseRequest, JobsImportRequest, SSHTestRequest
 from backend.security import require_auth, require_role
 from backend.scheduler import schedule_job
-from backend.validation import normalize_local_browse_path, validate_cron_expression, validate_job_payload
+from backend.validation import normalize_local_browse_path, validate_cron_expression, validate_job_payload, validate_non_option_value, validate_ssh_port
 
 router = APIRouter(prefix="/api", tags=["transfer"])
 
@@ -127,6 +127,9 @@ async def test_ssh(payload: SSHTestRequest, request: Request):
 
     port = payload.port
     key = payload.key
+    host = validate_non_option_value("host", host)
+    port = validate_ssh_port(port)
+    key = validate_non_option_value("key", key)
 
     cmd = ["ssh", "-o", "StrictHostKeyChecking=accept-new", "-o", "ConnectTimeout=5"]
     if port and port != "22":
@@ -170,9 +173,13 @@ async def browse_path(payload: BrowseRequest, request: Request):
     key = payload.key
 
     if host:
+        host = validate_non_option_value("host", host)
+        port = validate_ssh_port(port)
+        key = validate_non_option_value("key", key)
+        path = validate_non_option_value("path", path)
         # Remote listing via SSH
         # Use ls -1pa to get entries with / suffix for directories
-        ls_cmd = f"ls -1pa {shlex.quote(path)} 2>/dev/null"
+        ls_cmd = f"ls -1pa -- {shlex.quote(path)} 2>/dev/null"
         cmd = ["ssh", "-o", "StrictHostKeyChecking=accept-new",
                "-o", "ConnectTimeout=5", "-o", "BatchMode=yes"]
         if port and port != "22":

@@ -23,4 +23,15 @@ test.describe("Health & availability", () => {
     expect(response.status()).toBe(200);
     await expect(page.locator("#app")).toBeAttached();
   });
+
+  test("security headers are present on browser responses", async ({ page }) => {
+    const response = await page.goto("/");
+    expect(response.status()).toBe(200);
+    const headers = response.headers();
+
+    expect(headers["x-content-type-options"]).toBe("nosniff");
+    expect(headers["x-frame-options"]).toBe("DENY");
+    expect(headers["referrer-policy"]).toBe("same-origin");
+    expect(headers["content-security-policy"]).toContain("frame-ancestors 'none'");
+  });
 });
