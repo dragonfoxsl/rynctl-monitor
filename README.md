@@ -351,6 +351,13 @@ All API routes are prefixed with `/api`.
 - **Frontend**: Preact, Vite, JetBrains Mono
 - **Container**: Docker multi-stage build (Node 20 + Python 3.12-slim)
 
+## Maintenance Expectations
+
+Repository automation runs CI every Friday and on demand from GitHub Actions.
+For every change, keep `README.md` and `HANDOFF.md` current, follow secure
+development practices, add concise comments where logic is not obvious, and
+keep every file under 1000 lines. Commits must not include AI co-author trailers.
+
 ## License
 
 See [LICENSE](LICENSE).
