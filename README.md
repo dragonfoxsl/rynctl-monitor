@@ -356,7 +356,11 @@ All API routes are prefixed with `/api`.
 Repository automation runs CI every Friday and on demand from GitHub Actions.
 For every change, keep `README.md` and `HANDOFF.md` current, follow secure
 development practices, add concise comments where logic is not obvious, and
-keep every file under 1000 lines. Commits must not include AI co-author trailers.
+keep code and configuration files under 1000 lines and normal documentation
+under 2000 lines. Commits must not include AI co-author trailers.
+Future README rewrites should follow the `os-download` structure and only add
+new Ko-fi/support content when explicitly requested.
+Before pushing, check configured GitHub Actions and Dependabot status for failures or open alerts.
 
 ## License
 
