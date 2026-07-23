@@ -29,4 +29,5 @@
 ## Open Items
 
 - Keep the scheduled-job proof check in the e2e suite when scheduler behavior changes.
+- Keep e2e workflow fixture creation after the e2e image build and use `--no-deps` for the test run.
 - Review GitHub Dependabot and weekly CI results after each Friday run.

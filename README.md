@@ -358,6 +358,9 @@ For every change, keep `README.md` and `HANDOFF.md` current, follow secure
 development practices, add concise comments where logic is not obvious, and
 keep code and configuration files under 1000 lines and normal documentation
 under 2000 lines. Commits must not include AI co-author trailers.
+The e2e workflow builds the browser test image before creating scheduler
+fixtures and runs tests with `--no-deps` so `/tmp` fixtures are not wiped by an
+app container recreation.
 Future README rewrites should follow the `os-download` structure and only add
 new Ko-fi/support content when explicitly requested.
 Before pushing, check configured GitHub Actions and Dependabot status for failures or open alerts.
