@@ -2,10 +2,12 @@
 
 ## Current State
 
-- Branch: `main`
+- Working branch: `docs/maintenance-cleanup` (the repository default is `main`)
 - Remote: `git@github.com:dragonfoxsl/rynctl-monitor.git`
 - CI runs on push, pull request, manual dispatch, and Fridays at `03:00 UTC`.
-- Dependabot/security dependency alerts were fixed in earlier commits.
+- Current CI runs backend tests, frontend build/audit, package audit, and the
+  Dockerized browser/API and scheduler smoke suites. Tag builds repeat these
+  gates before publishing an image.
 
 ## Maintainer Rules
 
@@ -30,4 +32,10 @@
 
 - Keep the scheduled-job proof check in the e2e suite when scheduler behavior changes.
 - Keep e2e workflow fixture creation after the e2e image build and use `--no-deps` for the test run.
-- Review GitHub Dependabot and weekly CI results after each Friday run.
+- Dependabot audit (2026-07-24): no open security alerts. Five older update
+  PRs remain open: #5 (`picomatch`, frontend), #6 (Vite 8.0.0 → 8.0.5), #7
+  (pytest 8.4.2 → 9.0.3), #11 (PostCSS 8.5.8 → 8.5.15), and #12 (Playwright
+  group). Their reported checks are dependency submission success plus a
+  neutral CodeQL result, not the current CI test suite. There is no
+  `.github/dependabot.yml` on this branch, so no update schedule is currently
+  configured in-repository; review the stale PRs manually.
