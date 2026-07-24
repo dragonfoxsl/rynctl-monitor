@@ -6,8 +6,9 @@ and manual testing across functional, security, accessibility, data-integrity,
 execution-engine, performance, and operational dimensions.
 
 Test case IDs are stable (`TC-<area>-<n>`) for traceability. Status tags:
-**[auto]** covered by an automated test, **[manual]** manual only,
-**[gap]** known gap / not yet implemented.
+**[auto]** covered by an automated test, **[auto-partial]** partly automated,
+**[implemented]** present in the product but not directly covered by automation,
+**[manual]** manual only, and **[gap]** known gap / not yet implemented.
 
 ---
 
@@ -72,7 +73,7 @@ make verify                 # frontend-build + backend-tests + e2e-tests
 
 ## 2. Coverage snapshot (current automated tests)
 
-**Backend unit (`tests/unit/`, 44 tests, green on pytest 9):**
+**Backend unit (`tests/unit/`; do not hard-code a count because it changes):**
 - Auth: login/me, CSRF enforcement, account lockout (5 fails), expired session.
 - Auth hardening: `verify_password` roundtrip, signed-cookie issuance, tampered/unsigned cookie rejection, `Secure` flag, admin password from `RYNCTL_ADMIN_PASSWORD`.
 - Jobs/transfer: CRUD + last-run join, invalid cron rejected, export/import roundtrip, browse-root enforcement, overlap/queue dedupe, stale-run recovery, timeout, ssh_port + dangerous-flag validation, retry re-enqueue directive.
@@ -210,11 +211,11 @@ For each: happy path, not-found, unauthorized, malformed body.
 
 **Login** — TC-UI-LOGIN-01 invalid creds error; -02 success → dashboard; -03 visible labels are associated with inputs; -04 default-credentials hint shows only while password is default **[gap: always shown]**.
 
-**Dashboard** — TC-UI-DASH-01 stat cards match `/api/stats`; -02 chart renders with data and with zero runs; -03 recent-runs link to logs; -04 **[gap]** live refresh (Dashboard does not poll yet).
+**Dashboard** — TC-UI-DASH-01 stat cards match `/api/stats`; -02 chart renders with data and with zero runs; -03 recent-runs link to logs; -04 **[implemented]** polls every 5 seconds while jobs are running.
 
 **Jobs** — TC-UI-JOB-01 search/filter/tag/sort; -02 Run/Edit/Clone/Delete; -03 **[auto-partial]** running status updates without reload (5s poll); -04 skeleton on load; -05 teaching empty state; -06 **[auto]** health pill reflects `/api/health`.
 
-**Create/Edit Job** — TC-UI-CJ-01 required fields; -02 live preview matches `/preview`; -03 cron → English + invalid blocked; -04 `--delete`→DESTRUCTIVE / `-n`→DRY RUN badge; -05 SSH section gated by toggle; -06 **[auto]** schedule toggle keyboard-operable switch; -07 file browser stays in browse roots; -08 **[gap]** unsaved-changes guard on cancel; -09 **[gap]** FileBrowser rows keyboard-navigable.
+**Create/Edit Job** — TC-UI-CJ-01 required fields; -02 live preview matches `/preview`; -03 cron → English + invalid blocked; -04 `--delete`→DESTRUCTIVE / `-n`→DRY RUN badge; -05 SSH section gated by toggle; -06 **[auto]** schedule toggle keyboard-operable switch; -07 file browser stays in browse roots; -08 **[implemented]** dirty-form cancel asks before discarding; -09 **[implemented]** FileBrowser rows are keyboard-operable buttons.
 
 **Runs** — TC-UI-RUN-01 history renders + Refresh; -02 log viewer opens, 50KB cap; -03 skeleton; -04 poll keeps open log viewer open.
 
@@ -233,9 +234,9 @@ For each: happy path, not-found, unauthorized, malformed body.
 Automated (axe, `a11y.spec.js`) + manual (keyboard, SR).
 
 - TC-A11Y-01 **[auto]** `:focus-visible` ring on all interactive elements.
-- TC-A11Y-02 **[auto-partial]** toggles are `role="switch"`, collapsibles `aria-expanded`; **[gap]** FileBrowser rows still `<div onClick>`.
-- TC-A11Y-03 **[auto]** icon-only buttons have `aria-label` (Jobs/Runs/Users/logout); **[gap]** modal close `x` buttons.
-- TC-A11Y-04 **[auto]** `ConfirmDialog` Escape + backdrop + `role="dialog"`; **[gap]** Job/User/FileBrowser modals lack Escape + focus trap + focus return.
+- TC-A11Y-02 **[implemented]** toggles are `role="switch"`, collapsibles `aria-expanded`, and FileBrowser rows are native buttons; the FileBrowser behavior is not directly automated.
+- TC-A11Y-03 **[implemented]** icon-only buttons, including the FileBrowser close button, have accessible names; FileBrowser is excluded from the current axe scan.
+- TC-A11Y-04 **[implemented]** `ConfirmDialog` and the shared `Modal` support Escape, backdrop dismissal, dialog semantics, focus trapping, and focus return. FileBrowser supports Escape, backdrop dismissal, and dialog semantics but still needs focus trapping and focus return; these modal behaviors need direct UI coverage.
 - TC-A11Y-05 **[auto]** Color contrast AA: `--text-muted` raised; `--accent-text` token for accent text; `--accent` darkened so white-on-accent buttons pass; warning text and code-on-dark colors fixed. `color-contrast` is now **enforced** by the axe gate on the scanned pages.
 - TC-A11Y-06 **[auto]** `prefers-reduced-motion` suppresses animation.
 - TC-A11Y-07 Toasts announced via `aria-live`.
@@ -248,9 +249,9 @@ Automated (axe, `a11y.spec.js`) + manual (keyboard, SR).
 ## 12. UI states & resilience
 
 - TC-ST-01 **[auto-partial]** Loading skeletons on Jobs/Runs (not empty flash).
-- TC-ST-02 Live status: running job resolves without reload (Jobs/Runs poll; Dashboard **[gap]**).
+- TC-ST-02 Live status: running job resolves without reload (Jobs, Runs, and Dashboard poll while work is active).
 - TC-ST-03 Error: backend 500 / network drop surfaces a dismissable message **[gap: 3.5s auto-dismiss toast, no retry]**.
-- TC-ST-04 **[gap]** Unsaved-changes guard on dirty forms.
+- TC-ST-04 **[auto-partial]** Cancel on a dirty Create/Edit Job form asks before discarding; browser refresh/navigation is not guarded.
 - TC-ST-05 Session expiry mid-use → redirect to login (no infinite spinner).
 - TC-ST-06 Slow `/api/jobs` (throttled) keeps skeleton until resolved; no layout shift.
 - TC-ST-07 Empty states teach (jobs, runs, users) rather than "nothing here".
@@ -274,14 +275,14 @@ Automated (axe, `a11y.spec.js`) + manual (keyboard, SR).
 - TC-DATA-04 Backup→restore roundtrip preserves all tables; restore creates a safety backup first; corrupt upload rejected.
 - TC-DATA-05 Concurrent writes (a scheduled run + a manual run) don't corrupt under WAL; `BEGIN IMMEDIATE` reservation prevents double-run rows.
 - TC-DATA-06 Audit log records login/logout, job create/update/delete/run, user create/update/delete with user + timestamp.
-- TC-DATA-07 **[gap]** Retention: `job_runs` and `{DATA_DIR}/logs/` grow unbounded — no pruning. Verify behavior at scale; track adding retention.
+- TC-DATA-07 **[auto]** Retention: when `RYNCTL_RUN_RETENTION_DAYS` is greater than zero, the daily scheduler task prunes old finished runs and their log files; zero keeps everything.
 - TC-DATA-08 Timestamps stored/compared in UTC; no TZ drift between `started_at`/`finished_at`.
 
 ---
 
 ## 15. Performance & scale
 
-- TC-PERF-01 `GET /api/jobs` with 500 jobs (each with the latest-run subqueries) returns < 500 ms. **[gap]** No index on `job_runs(job_id)` — add and re-measure.
+- TC-PERF-01 `GET /api/jobs` with 500 jobs (each with the latest-run subqueries) returns < 500 ms. The `idx_job_runs_job_id` index exists; seed a large dataset and measure the target.
 - TC-PERF-02 `GET /api/runs/recent` and per-job runs with 5k runs stay responsive.
 - TC-PERF-03 Dashboard `/api/stats` 7-day aggregation under large `job_runs`.
 - TC-PERF-04 Connection-per-request overhead (every call opens a new SQLite conn + re-runs PRAGMA) under sustained load — consider pooling/thread-local.
@@ -319,13 +320,11 @@ Automated (axe, `a11y.spec.js`) + manual (keyboard, SR).
 
 ## 18. Automation backlog (priority order)
 
-1. **CI gate [gap]:** the GitHub Actions workflow only builds/publishes the image — it runs **no tests**. Add a job running `make backend-tests` + `make e2e-tests` on PRs. Highest leverage now that the suite exists.
-2. Role-matrix API tests (§3) for `rsync` and `readonly`.
-3. Security-header assertions (§5 TC-SEC-07) once headers are added.
-4. UI specs for TC-UI-CJ-03 (cron+badge), TC-ST-04 (unsaved guard), TC-UI-DASH live refresh.
-5. `@axe-core/playwright` on CreateJob + modal-open states (focus-trap + labels now landed; extend the scan to forms/modals).
-6. Visual-regression snapshots (dark/light per page) after the Button/Card/Metric component extraction.
-7. Load test (TC-PERF-01/02) with seeded large dataset; add `job_runs(job_id)` index first.
+1. Role-matrix API tests (§3) for `rsync` and `readonly`.
+2. UI specs for TC-UI-CJ-03 (cron+badge), browser navigation protection for dirty forms, and Dashboard live refresh.
+3. Extend `@axe-core/playwright` to CreateJob and modal-open states.
+4. Visual-regression snapshots (dark/light per page).
+5. Load test (TC-PERF-01/02) with a seeded large dataset and verify the existing `idx_job_runs_job_id` index is used.
 
 ---
 
@@ -347,13 +346,14 @@ Automated (axe, `a11y.spec.js`) + manual (keyboard, SR).
 
 ## 20. Known gaps tracked (not yet closed)
 
-1. **CI runs no tests** (§18.1) — top priority.
-2. **No security headers** (TC-SEC-07).
-3. **No DB index** on `job_runs(job_id)` (TC-PERF-01).
-4. **No run/log retention** (TC-DATA-07).
-5. ~~Color-contrast below AA~~ — fixed; axe gate now enforces it.
-6. ~~Modal focus-trap / Escape / labels~~ — shared `Modal` (focus-trap, Escape, labeled close) + Escape on Job/FileBrowser modals.
-7. ~~FileBrowser keyboard access~~ — entries are now `<button>`s.
-8. **Unsaved-changes guard**, **persistent error + retry**, **Dashboard live refresh** (§12).
-9. **Responsive < 900px** (TC-XB-02).
-10. **Fake "Sort by" control**, **domain copy mismatch** (UX, P2/P3).
+1. **Persistent error + retry** behavior remains incomplete (§12).
+2. Dirty Create/Edit Job forms warn on Cancel, but browser refresh/navigation is not guarded.
+3. FileBrowser still needs focus trapping and focus return.
+4. **Responsive < 900px** remains incomplete (TC-XB-02).
+5. **Fake "Sort by" control** and **domain copy mismatch** remain UX follow-ups (P2/P3).
+
+Closed since the original plan: CI now runs backend and Playwright tests,
+security headers have automated coverage, retention and the `job_runs(job_id)`
+index are implemented and tested, Dashboard live polling and the Cancel-time
+dirty-form guard landed, the axe color-contrast gate is active, shared modal
+accessibility landed, and FileBrowser entries are keyboard-operable buttons.
