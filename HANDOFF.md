@@ -2,7 +2,7 @@
 
 ## Current State
 
-- Working branch: `docs/maintenance-cleanup` (the repository default is `main`)
+- Working branch: `docs/public-readme-cleanup` (the repository default is `main`)
 - Remote: `git@github.com:dragonfoxsl/rynctl-monitor.git`
 - CI runs on push, pull request, manual dispatch, and Fridays at `03:00 UTC`.
 - Current CI runs backend tests, frontend build/audit, package audit, and the
@@ -13,7 +13,9 @@
 
 - Never add AI co-author trailers to commits.
 - Keep `README.md` and this `HANDOFF.md` updated with each change.
-- Follow the `os-download` README style for future README creation or major rewrites.
+- Keep public README content focused on users and contributors. Put agent instructions,
+  branch state, dated PR lists, and operational handoff notes in `HANDOFF.md` or `AGENTS.md`.
+- Follow the `os-download` public README style for future README creation or major rewrites.
 - Preserve existing support links, but do not add new Ko-fi/donation content unless explicitly requested.
 - Follow secure development practices for Python, JavaScript, Docker, and GitHub Actions.
 - Keep code and configuration files under 1000 lines, and normal documentation under 2000 lines.
@@ -32,10 +34,6 @@
 
 - Keep the scheduled-job proof check in the e2e suite when scheduler behavior changes.
 - Keep e2e workflow fixture creation after the e2e image build and use `--no-deps` for the test run.
-- Dependabot audit (2026-07-24): no open security alerts. Five older update
-  PRs remain open: #5 (`picomatch`, frontend), #6 (Vite 8.0.0 → 8.0.5), #7
-  (pytest 8.4.2 → 9.0.3), #11 (PostCSS 8.5.8 → 8.5.15), and #12 (Playwright
-  group). Their reported checks are dependency submission success plus a
-  neutral CodeQL result, not the current CI test suite. There is no
-  `.github/dependabot.yml` on this branch, so no update schedule is currently
-  configured in-repository; review the stale PRs manually.
+- Dependabot audit (2026-07-25): no open version-update PRs.
+- No `.github/dependabot.yml` is currently present; review whether scheduled
+  version updates should be re-enabled before relying on Dependabot automation.
