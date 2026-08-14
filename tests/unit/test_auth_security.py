@@ -12,7 +12,7 @@ def test_verify_password_roundtrip_and_rejection(app_ctx):
 
 
 def test_login_and_me(client):
-    res = client.post("/api/auth/login", json={"username": "admin", "password": "admin"})
+    res = client.post("/api/auth/login", json={"username": "admin", "password": "TestAdmin123!"})
     assert res.status_code == 200
 
     me = client.get("/api/auth/me")
@@ -21,13 +21,13 @@ def test_login_and_me(client):
 
 
 def test_login_response_does_not_include_raw_session_token(client):
-    res = client.post("/api/auth/login", json={"username": "admin", "password": "admin"})
+    res = client.post("/api/auth/login", json={"username": "admin", "password": "TestAdmin123!"})
     assert res.status_code == 200
     assert "token" not in res.json()
 
 
 def test_session_cookie_is_signed_not_raw_token(client):
-    res = client.post("/api/auth/login", json={"username": "admin", "password": "admin"})
+    res = client.post("/api/auth/login", json={"username": "admin", "password": "TestAdmin123!"})
     cookie_value = client.cookies.get("session_token")
     raw_token = cookie_value.rpartition(".")[0]
     # The cookie carries the token plus an HMAC signature, not the bare token.
@@ -36,7 +36,7 @@ def test_session_cookie_is_signed_not_raw_token(client):
 
 
 def test_unsigned_or_tampered_cookie_is_rejected(client):
-    res = client.post("/api/auth/login", json={"username": "admin", "password": "admin"})
+    res = client.post("/api/auth/login", json={"username": "admin", "password": "TestAdmin123!"})
     raw_token = client.cookies.get("session_token").rpartition(".")[0]
 
     # A raw DB token (as if leaked from the database) without a valid signature
@@ -53,7 +53,8 @@ def test_secure_cookie_flag_honored(monkeypatch, tmp_path):
     import sys
 
     monkeypatch.setenv("RYNCTL_DATA_DIR", str(tmp_path / "d"))
-    monkeypatch.setenv("RYNCTL_SECRET", "test-secret")
+    monkeypatch.setenv("RYNCTL_SECRET", "unit-test-secret-0123456789abcdef")
+    monkeypatch.setenv("RYNCTL_ADMIN_PASSWORD", "TestAdmin123!")
     monkeypatch.setenv("RYNCTL_SECURE_COOKIES", "true")
     for name in [n for n in sys.modules if n == "backend" or n.startswith("backend.")]:
         del sys.modules[name]
@@ -61,12 +62,12 @@ def test_secure_cookie_flag_honored(monkeypatch, tmp_path):
 
     app_module = importlib.import_module("backend.app")
     with TestClient(app_module.app) as c:
-        res = c.post("/api/auth/login", json={"username": "admin", "password": "admin"})
+        res = c.post("/api/auth/login", json={"username": "admin", "password": "TestAdmin123!"})
         assert "secure" in res.headers.get("set-cookie", "").lower()
 
 
 def test_csrf_required_for_mutation(client):
-    login = client.post("/api/auth/login", json={"username": "admin", "password": "admin"})
+    login = client.post("/api/auth/login", json={"username": "admin", "password": "TestAdmin123!"})
     assert login.status_code == 200
 
     res = client.post(
@@ -82,7 +83,7 @@ def test_login_lockout_persists_in_database(client, db):
         res = client.post("/api/auth/login", json={"username": "admin", "password": "wrong"})
         assert res.status_code == 401
 
-    locked = client.post("/api/auth/login", json={"username": "admin", "password": "admin"})
+    locked = client.post("/api/auth/login", json={"username": "admin", "password": "TestAdmin123!"})
     assert locked.status_code == 403
 
     row = db.execute(

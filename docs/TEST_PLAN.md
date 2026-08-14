@@ -122,7 +122,7 @@ Three roles: `admin`, `rsync`, `readonly`. For each action verify **both** the U
 - TC-AUTH-10 **[auto]** Password/CSRF comparisons are constant-time (`secrets.compare_digest`).
 - TC-AUTH-11 Concurrent sessions: logging in twice yields two valid sessions; logout of one does not invalidate the other.
 - TC-AUTH-12 `RYNCTL_SECRET` change invalidates all existing signed cookies (forces re-login) — expected on secret rotation.
-- TC-AUTH-13 **[auto]** Fresh DB seeds admin from `RYNCTL_ADMIN_PASSWORD`; default `admin/admin` only when unset (logs a warning).
+- TC-AUTH-13 **[auto]** Fresh DB seeds admin from the required, policy-compliant `RYNCTL_ADMIN_PASSWORD`; startup fails when credentials are missing or weak.
 
 ---
 
@@ -300,7 +300,7 @@ Automated (axe, `a11y.spec.js`) + manual (keyboard, SR).
 - TC-OPS-04 **Single Uvicorn worker** required: starting with `--workers 2` duplicates scheduled runs / splits rate-limit state — document and verify the single-worker contract.
 - TC-OPS-05 Docker healthcheck (`HEALTHCHECK` in Dockerfile) flips unhealthy when `/api/health` fails; compose `depends_on: service_healthy` gates e2e.
 - TC-OPS-06 Volume persistence: DB + logs survive container restart on the `rynctl-data` volume.
-- TC-OPS-07 Env defaults: app starts with no env set (warns on default `RYNCTL_SECRET`/admin password); honors all documented overrides.
+- TC-OPS-07 **[auto]** App refuses to start without a 32-character `RYNCTL_SECRET` and a policy-compliant `RYNCTL_ADMIN_PASSWORD`; documented overrides are honored.
 - TC-OPS-08 Graceful shutdown: lifespan stops the runner and scheduler; an in-flight run is marked stale on next start (TC-EXEC-07).
 
 ---

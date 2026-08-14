@@ -8,6 +8,9 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   frontend:
     runs-on: ubuntu-latest
@@ -15,8 +18,10 @@ jobs:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: '22'
           cache: npm
@@ -34,8 +39,10 @@ jobs:
       run:
         working-directory: tests
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: '22'
           cache: npm
@@ -47,9 +54,14 @@ jobs:
 
   backend-tests:
     runs-on: ubuntu-latest
+    env:
+      RYNCTL_SECRET: backend-ci-test-secret-0123456789abcdef
+      RYNCTL_ADMIN_PASSWORD: CiTestOnly123!
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: '3.12'
       - name: Install system deps
@@ -62,8 +74,13 @@ jobs:
   e2e-tests:
     needs: [frontend, e2e-package-audit, backend-tests]
     runs-on: ubuntu-latest
+    env:
+      RYNCTL_SECRET: e2e-ci-test-secret-0123456789abcdef
+      RYNCTL_ADMIN_PASSWORD: CiTestOnly123!
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
       - name: Check Playwright package and image versions match
         run: |
           pkg=$(node -p "require('./tests/package.json').devDependencies['@playwright/test']")

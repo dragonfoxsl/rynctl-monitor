@@ -26,6 +26,25 @@ def test_job_crud_and_last_run_field(client, auth_headers, db):
     assert payload["total_data"] == 42
 
 
+def test_job_update_closes_connection_before_audit(client, auth_headers, app_ctx, monkeypatch):
+    created = client.post(
+        "/api/jobs",
+        json={"name": "before", "source": "/tmp/src", "destination": "/tmp/dst"},
+        headers=auth_headers,
+    )
+    job_id = created.json()["id"]
+    active_counts = []
+    monkeypatch.setattr(
+        "backend.routes.jobs.log_audit",
+        lambda *_args, **_kwargs: active_counts.append(app_ctx["database"]._active_connections),
+    )
+
+    updated = client.put(f"/api/jobs/{job_id}", json={"name": "after"}, headers=auth_headers)
+
+    assert updated.status_code == 200
+    assert active_counts == [0]
+
+
 def test_non_numeric_ssh_port_is_rejected(client, auth_headers):
     res = client.post(
         "/api/jobs",
@@ -74,6 +93,26 @@ def test_dangerous_remote_shell_flag_in_flags_is_rejected(client, auth_headers):
             "destination": "/tmp/dst",
             "custom_flags": "-e ssh-malicious",
         },
+        headers=auth_headers,
+    )
+    assert res.status_code == 400
+
+
+def test_attached_remote_shell_short_flag_is_rejected(client, auth_headers):
+    res = client.post(
+        "/api/jobs",
+        json={"name": "evil-attached", "source": "/tmp/src", "destination": "/tmp/dst",
+              "custom_flags": "-essh-malicious"},
+        headers=auth_headers,
+    )
+    assert res.status_code == 400
+
+
+def test_clustered_remote_shell_short_flag_is_rejected(client, auth_headers):
+    res = client.post(
+        "/api/jobs",
+        json={"name": "evil-cluster", "source": "/tmp/src", "destination": "/tmp/dst",
+              "custom_flags": "-ave ssh-malicious"},
         headers=auth_headers,
     )
     assert res.status_code == 400
@@ -205,6 +244,33 @@ def test_manual_run_rejects_already_queued(client, auth_headers, monkeypatch):
     assert "already queued" in res.json()["detail"]
 
 
+def test_queued_job_cannot_be_deleted(client, auth_headers, monkeypatch):
+    create = client.post(
+        "/api/jobs",
+        json={"name": "queued-delete", "source": "/tmp/src", "destination": "/tmp/dst"},
+        headers=auth_headers,
+    )
+    job_id = create.json()["id"]
+    monkeypatch.setattr("backend.routes.jobs.reserve_job_deletion", lambda _job_id: False)
+
+    res = client.delete(f"/api/jobs/{job_id}", headers=auth_headers)
+    assert res.status_code == 409
+
+
+def test_running_job_cannot_be_deleted(client, auth_headers, db):
+    create = client.post(
+        "/api/jobs",
+        json={"name": "running-delete", "source": "/tmp/src", "destination": "/tmp/dst"},
+        headers=auth_headers,
+    )
+    job_id = create.json()["id"]
+    db.execute("INSERT INTO job_runs (job_id, status) VALUES (?, 'running')", (job_id,))
+    db.commit()
+
+    res = client.delete(f"/api/jobs/{job_id}", headers=auth_headers)
+    assert res.status_code == 409
+
+
 def test_recover_running_jobs_marks_stale_failed(db, rsync_module):
     db.execute(
         "INSERT INTO jobs (name, source, destination) VALUES ('stale', '/tmp/src', '/tmp/dst')"
@@ -314,6 +380,33 @@ def test_enqueue_job_deduplicates_queue(job_runner_module, monkeypatch):
 
     assert job_runner_module.enqueue_job(7, "manual") == "enqueued"
     assert job_runner_module.enqueue_job(7, "manual") == "queued"
+
+    with job_runner_module._lock:
+        job_runner_module._queued_job_ids.clear()
+
+
+def test_delayed_retry_remains_reserved_until_requeued(job_runner_module, monkeypatch):
+    callbacks = []
+
+    class FakeTimer:
+        daemon = False
+
+        def __init__(self, _delay, callback):
+            callbacks.append(callback)
+
+        def start(self):
+            pass
+
+    monkeypatch.setattr(job_runner_module.threading, "Timer", FakeTimer)
+    with job_runner_module._lock:
+        job_runner_module._queued_job_ids.add(42)
+
+    job_runner_module._schedule_retry(42, attempt=2, delay=30)
+    assert job_runner_module.queued_jobs() == [42]
+    queued = []
+    monkeypatch.setattr(job_runner_module._queue, "put", queued.append)
+    callbacks[0]()
+    assert queued == [(42, "retry", 2)]
 
     with job_runner_module._lock:
         job_runner_module._queued_job_ids.clear()

@@ -2,6 +2,7 @@
 Job import/export, SSH connection test, and file browser routes.
 """
 
+import logging
 import os
 import subprocess
 import shlex
@@ -17,6 +18,7 @@ from backend.scheduler import schedule_job
 from backend.validation import normalize_local_browse_path, validate_cron_expression, validate_job_payload, validate_non_option_value, validate_ssh_port
 
 router = APIRouter(prefix="/api", tags=["transfer"])
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -150,8 +152,9 @@ async def test_ssh(payload: SSHTestRequest, request: Request):
         return {"ok": False, "message": "Connection timed out after 10 seconds"}
     except FileNotFoundError:
         return {"ok": False, "message": "SSH client not found on server"}
-    except Exception as exc:
-        return {"ok": False, "message": str(exc)}
+    except Exception:
+        logger.exception("Unexpected SSH connection test failure")
+        return {"ok": False, "message": "Unable to test SSH connection"}
 
 
 # ---------------------------------------------------------------------------
@@ -198,8 +201,9 @@ async def browse_path(payload: BrowseRequest, request: Request):
         except subprocess.TimeoutExpired:
             return {"ok": False, "message": "Timed out listing remote directory",
                     "entries": [], "path": path}
-        except Exception as exc:
-            return {"ok": False, "message": str(exc), "entries": [], "path": path}
+        except Exception:
+            logger.exception("Unexpected remote browse failure")
+            return {"ok": False, "message": "Unable to list remote directory", "entries": [], "path": path}
     else:
         # Local listing
         path = normalize_local_browse_path(path)
@@ -224,8 +228,9 @@ async def browse_path(payload: BrowseRequest, request: Request):
         except PermissionError:
             return {"ok": False, "message": f"Permission denied: {path}",
                     "entries": [], "path": path}
-        except Exception as exc:
-            return {"ok": False, "message": str(exc), "entries": [], "path": path}
+        except Exception:
+            logger.exception("Unexpected local browse failure")
+            return {"ok": False, "message": "Unable to list local directory", "entries": [], "path": path}
 
 
 def _parse_ls_output(output, base_path):

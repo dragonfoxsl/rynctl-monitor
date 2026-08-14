@@ -7,9 +7,9 @@ from fastapi import APIRouter, HTTPException, Request
 
 from backend.config import JOB_TIMEOUT_SECS
 from backend.database import get_db, log_audit
-from backend.job_runner import enqueue_job
+from backend.job_runner import enqueue_job, release_job_deletion, reserve_job_deletion
 from backend.models import JobPayload
-from backend.rsync import build_rsync_command, job_has_running_run
+from backend.rsync import build_rsync_command
 from backend.scheduler import schedule_job, unschedule_job
 from backend.security import require_auth, require_role
 from backend.validation import validate_cron_expression, validate_job_payload
@@ -156,33 +156,45 @@ async def update_job(job_id: int, payload: JobPayload, request: Request):
 
         sched_enabled = body.get("schedule_enabled", existing["schedule_enabled"])
         sched_cron = body.get("schedule_cron", existing["schedule_cron"])
-
-        if sched_enabled and sched_cron:
-            schedule_job(job_id, sched_cron)
-        else:
-            unschedule_job(job_id)
-
-        job = conn.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
-        log_audit(user, "job_update", "job", str(job_id), f"Updated job '{job['name']}'")
-        return dict(job)
+        job = dict(conn.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone())
     finally:
         conn.close()
+
+    if sched_enabled and sched_cron:
+        schedule_job(job_id, sched_cron)
+    else:
+        unschedule_job(job_id)
+
+    log_audit(user, "job_update", "job", str(job_id), f"Updated job '{job['name']}'")
+    return job
 
 
 @router.delete("/{job_id}")
 async def delete_job(job_id: int, request: Request):
     user = require_role(request, "admin", "rsync")
-    conn = get_db()
+    if not reserve_job_deletion(job_id):
+        raise HTTPException(status_code=409, detail="Queued or running jobs cannot be deleted")
     try:
-        existing = conn.execute("SELECT id, name FROM jobs WHERE id = ?", (job_id,)).fetchone()
-        if not existing:
-            raise HTTPException(status_code=404, detail="Job not found")
-        conn.execute("DELETE FROM jobs WHERE id = ?", (job_id,))
-        conn.commit()
+        conn = get_db()
+        try:
+            conn.execute("BEGIN IMMEDIATE")
+            existing = conn.execute("SELECT id, name FROM jobs WHERE id = ?", (job_id,)).fetchone()
+            if not existing:
+                raise HTTPException(status_code=404, detail="Job not found")
+            running = conn.execute(
+                "SELECT 1 FROM job_runs WHERE job_id = ? AND status = 'running' LIMIT 1",
+                (job_id,),
+            ).fetchone()
+            if running:
+                raise HTTPException(status_code=409, detail="Queued or running jobs cannot be deleted")
+            conn.execute("DELETE FROM jobs WHERE id = ?", (job_id,))
+            conn.commit()
+        finally:
+            conn.close()
+        unschedule_job(job_id)
     finally:
-        conn.close()
+        release_job_deletion(job_id)
 
-    unschedule_job(job_id)
     log_audit(user, "job_delete", "job", str(job_id), f"Deleted job '{existing['name']}'")
     return {"ok": True}
 

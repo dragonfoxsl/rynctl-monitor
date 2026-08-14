@@ -258,8 +258,8 @@ def run_rsync_job(job_id: int, attempt: int = 1):
         else:
             send_webhook(job, run_data, "success")
 
-    except Exception as exc:
-        logger.error("Job %d exception: %s", job_id, exc)
+    except Exception:
+        logger.exception("Unexpected job execution failure for job %d", job_id)
         metrics.inc("rynctl_job_runs_completed", labels={"status": "error"})
 
         conn = get_db()
@@ -269,17 +269,11 @@ def run_rsync_job(job_id: int, attempt: int = 1):
                    SET status = 'failed', finished_at = datetime('now'),
                        exit_code = -1, error_message = ?
                    WHERE id = ?""",
-                (str(exc), run_id),
+                ("Unexpected job execution error", run_id),
             )
             conn.commit()
         finally:
             conn.close()
-
-        try:
-            with open(log_path, "a") as log_f:
-                log_f.write(f"\nEXCEPTION: {exc}\n")
-        except Exception:
-            pass
 
         if retry_max > 0 and attempt < retry_max:
             logger.info("Scheduling retry of job %d after exception in %ds", job_id, retry_delay)

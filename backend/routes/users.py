@@ -74,7 +74,8 @@ async def update_user(user_id: int, payload: UserUpdateRequest, request: Request
 
     conn = get_db()
     try:
-        existing = conn.execute("SELECT id FROM users WHERE id = ?", (user_id,)).fetchone()
+        conn.execute("BEGIN IMMEDIATE")
+        existing = conn.execute("SELECT id, role FROM users WHERE id = ?", (user_id,)).fetchone()
         if not existing:
             raise HTTPException(status_code=404, detail="User not found")
 
@@ -90,6 +91,10 @@ async def update_user(user_id: int, payload: UserUpdateRequest, request: Request
         if "role" in body:
             if body["role"] not in ("admin", "rsync", "readonly"):
                 raise HTTPException(status_code=400, detail="Invalid role")
+            if existing["role"] == "admin" and body["role"] != "admin":
+                admins = conn.execute("SELECT COUNT(*) FROM users WHERE role = 'admin'").fetchone()[0]
+                if admins == 1:
+                    raise HTTPException(status_code=409, detail="Cannot demote the final admin")
             conn.execute("UPDATE users SET role = ? WHERE id = ?", (body["role"], user_id))
 
         if "username" in body and body["username"]:
@@ -122,9 +127,16 @@ async def delete_user(user_id: int, request: Request):
     user = require_role(request, "admin")
     conn = get_db()
     try:
-        existing = conn.execute("SELECT id, username FROM users WHERE id = ?", (user_id,)).fetchone()
+        conn.execute("BEGIN IMMEDIATE")
+        existing = conn.execute("SELECT id, username, role FROM users WHERE id = ?", (user_id,)).fetchone()
         if not existing:
             raise HTTPException(status_code=404, detail="User not found")
+        if user_id == user["id"]:
+            raise HTTPException(status_code=409, detail="Cannot delete your own account")
+        if existing["role"] == "admin":
+            admins = conn.execute("SELECT COUNT(*) FROM users WHERE role = 'admin'").fetchone()[0]
+            if admins == 1:
+                raise HTTPException(status_code=409, detail="Cannot delete the final admin")
         deleted_username = existing["username"]
         conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
         conn.commit()

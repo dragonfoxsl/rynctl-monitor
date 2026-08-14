@@ -47,7 +47,8 @@ def validate_rsync_flags(*flag_strings: str) -> None:
             raise HTTPException(status_code=400, detail=f"Invalid rsync options: {exc}") from exc
         for token in tokens:
             name = token.split("=", 1)[0]
-            if name in _FORBIDDEN_RSYNC_OPTS:
+            short_rsh = token.startswith("-") and not token.startswith("--") and "e" in token[1:]
+            if name in _FORBIDDEN_RSYNC_OPTS or short_rsh:
                 raise HTTPException(
                     status_code=400,
                     detail=f"rsync option '{name}' is not allowed (configure SSH via the port/key fields instead)",

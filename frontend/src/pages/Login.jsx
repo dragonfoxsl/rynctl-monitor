@@ -84,10 +84,6 @@ export function Login() {
             fontSize: 14, cursor: 'pointer', fontWeight: 600, boxShadow: 'var(--shadow-sm)',
           }}>Sign In</button>
         </form>
-        <div style={{
-          textAlign: 'center', marginTop: 20, fontSize: 12,
-          color: 'var(--text-muted)', fontFamily: 'var(--font-sans)',
-        }}>Default credentials: admin / admin</div>
       </div>
     </div>
   );

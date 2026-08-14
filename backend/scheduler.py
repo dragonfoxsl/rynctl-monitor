@@ -64,7 +64,11 @@ def unschedule_job(job_id: int):
 
 
 def load_schedules():
-    """Load all enabled cron schedules from the DB on startup."""
+    """Replace rsync schedules with the enabled jobs in the current DB."""
+    for job in scheduler.get_jobs():
+        if job.id.startswith("rsync_job_"):
+            scheduler.remove_job(job.id)
+
     conn = get_db()
     try:
         rows = conn.execute(

@@ -6,6 +6,7 @@ Routes and schedulers enqueue jobs here instead of spawning ad hoc threads.
 import logging
 import queue
 import threading
+from contextlib import contextmanager
 
 from backend.rsync import RetryScheduled, job_has_running_run, run_rsync_job
 
@@ -55,11 +56,39 @@ def queued_jobs() -> list[int]:
         return sorted(_queued_job_ids)
 
 
+@contextmanager
+def idle_runner_boundary():
+    """Block new enqueues while an idle runner is being reconfigured."""
+    _lock.acquire()
+    try:
+        yield not _queued_job_ids
+    finally:
+        _lock.release()
+
+
+def reserve_job_deletion(job_id: int) -> bool:
+    """Atomically block enqueue while a job is being deleted."""
+    with _lock:
+        if job_id in _queued_job_ids:
+            return False
+        _queued_job_ids.add(job_id)
+        return True
+
+
+def release_job_deletion(job_id: int) -> None:
+    with _lock:
+        _queued_job_ids.discard(job_id)
+
+
 def _schedule_retry(job_id: int, attempt: int, delay: int):
-    """Re-enqueue a failed job after a delay without blocking the worker thread."""
+    """Queue a reserved retry after a delay without blocking the worker thread."""
     def _fire():
-        state = enqueue_job(job_id, "retry", attempt=attempt)
-        logger.info("Retry of job %d (attempt %d) %s", job_id, attempt, state)
+        with _lock:
+            if _stop_event.is_set():
+                _queued_job_ids.discard(job_id)
+                return
+            _queue.put((job_id, "retry", attempt))
+        logger.info("Queued retry of job %d (attempt %d)", job_id, attempt)
 
     timer = threading.Timer(max(delay, 0), _fire)
     timer.daemon = True
@@ -79,12 +108,10 @@ def _worker_loop():
         except Exception:
             logger.exception("Unhandled job runner exception for job %d", job_id)
         finally:
-            if job_id != -1:
+            if job_id != -1 and not isinstance(retry, RetryScheduled):
                 with _lock:
                     _queued_job_ids.discard(job_id)
             _queue.task_done()
 
-        # Schedule retry only after the job has been removed from the queued
-        # set, so the re-enqueue isn't rejected as a duplicate.
         if isinstance(retry, RetryScheduled):
             _schedule_retry(job_id, retry.attempt, retry.delay)

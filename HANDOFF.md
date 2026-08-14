@@ -2,7 +2,7 @@
 
 ## Current State
 
-- Working branch: `docs/public-readme-cleanup` (the repository default is `main`)
+- Default branch: `main`
 - Remote: `git@github.com:dragonfoxsl/rynctl-monitor.git`
 - CI runs on push, pull request, manual dispatch, and Fridays at `03:00 UTC`.
 - Current CI runs backend tests, frontend build/audit, package audit, and the
@@ -34,6 +34,4 @@
 
 - Keep the scheduled-job proof check in the e2e suite when scheduler behavior changes.
 - Keep e2e workflow fixture creation after the e2e image build and use `--no-deps` for the test run.
-- Dependabot audit (2026-07-25): no open version-update PRs.
-- No `.github/dependabot.yml` is currently present; review whether scheduled
-  version updates should be re-enabled before relying on Dependabot automation.
+- Keep package-manager audits in CI; GitHub alert availability is not a substitute for a clean lockfile audit.

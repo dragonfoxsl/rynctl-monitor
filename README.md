@@ -55,12 +55,12 @@ A self-hosted web UI for managing, scheduling, and monitoring rsync jobs on Linu
    cd rynctl-monitor
    ```
 
-2. (Optional) Create a `.env` file to override defaults:
+2. Create a `.env` file with the two required credentials:
 
    ```bash
-   RYNCTL_SECRET=replace-with-a-strong-random-secret
-   RYNCTL_ADMIN_PASSWORD=replace-with-a-strong-initial-admin-password
-   RYNCTL_PORT=8080
+   cp .env.example .env
+   # Replace both placeholder values before starting.
+   openssl rand -hex 32
    ```
 
 3. Start the container:
@@ -69,15 +69,7 @@ A self-hosted web UI for managing, scheduling, and monitoring rsync jobs on Linu
    docker compose up -d
    ```
 
-4. Open `http://localhost:8080` and log in with the configured admin password.
-   If you did not set `RYNCTL_ADMIN_PASSWORD` before first startup, the default
-   is **admin / admin** and must be changed immediately.
-
-For an application-only compose file with no tool/test services:
-
-```bash
-docker compose -f docker-compose.app.yml up -d
-```
+4. Open `http://localhost:8080` and log in as `admin` with the configured password.
 
 ### Container-only workflow
 
@@ -105,53 +97,19 @@ docker compose exec -T rynctl-monitor sh -lc 'test "$(cat /tmp/rynctl-scheduler-
 
 #### Docker Compose file
 
-The default `docker-compose.yml` creates a named volume for the database and logs. To let rsync reach host directories or use SSH keys, uncomment and edit the volume mounts:
-
-```yaml
-services:
-  rynctl-monitor:
-    build: .
-    container_name: rynctl-monitor
-    ports:
-      - "${RYNCTL_PORT:-8080}:8080"
-    volumes:
-      - rynctl-data:/data
-      # Mount host directories you want to sync:
-      # - /home/data:/home/data:ro
-      # - /backups:/backups
-      # Mount SSH keys for remote rsync:
-      # - ~/.ssh/id_rsa:/home/rynctl/.ssh/id_rsa:ro
-      # - ~/.ssh/known_hosts:/home/rynctl/.ssh/known_hosts:ro
-    environment:
-      - RYNCTL_PORT=8080
-      - RYNCTL_SECRET=${RYNCTL_SECRET:-change-me-to-a-random-secret}
-    read_only: true
-    tmpfs:
-      - /tmp
-    cap_drop:
-      - ALL
-    security_opt:
-      - no-new-privileges:true
-    restart: unless-stopped
-
-volumes:
-  rynctl-data:
-```
+The default `docker-compose.yml` creates a named volume for the database and
+logs. To let rsync reach host directories or use SSH keys, uncomment and edit
+the example volume mounts in that file.
 
 ### Pre-built image (GHCR)
 
 Use the pre-built image from GitHub Container Registry — no local build required:
 
 ```bash
-docker compose -f docker-compose.ghcr.yml up -d
-```
-
-Or run directly without a compose file:
-
-```bash
 docker run -d -p 8080:8080 \
   -v rynctl-data:/data \
-  -e RYNCTL_SECRET=my-secret \
+  -e RYNCTL_SECRET=replace-with-at-least-32-random-characters \
+  -e RYNCTL_ADMIN_PASSWORD=ReplaceWithStrong123 \
   --name rynctl-monitor \
   ghcr.io/dragonfoxsl/rynctl-monitor:latest
 ```
@@ -162,7 +120,8 @@ docker run -d -p 8080:8080 \
 docker build -t rynctl-monitor .
 docker run -d -p 8080:8080 \
   -v rynctl-data:/data \
-  -e RYNCTL_SECRET=my-secret \
+  -e RYNCTL_SECRET=replace-with-at-least-32-random-characters \
+  -e RYNCTL_ADMIN_PASSWORD=ReplaceWithStrong123 \
   --name rynctl-monitor \
   rynctl-monitor
 ```
@@ -194,7 +153,7 @@ The frontend is a Preact SPA built with Vite. During development you need a fron
 
 ```bash
 cd frontend
-npm install
+npm ci --legacy-peer-deps
 npm run build
 ```
 
@@ -233,13 +192,15 @@ scheduled rsync job copied the expected file.
 
 ## Environment Variables
 
-All settings are optional. Defaults are designed for a quick local start.
+`RYNCTL_SECRET` and `RYNCTL_ADMIN_PASSWORD` are required. Startup requires a
+32-character secret and an admin password with at least eight characters,
+uppercase, lowercase, and a number.
 
 | Variable | Default | Description |
 |---|---|---|
 | `RYNCTL_PORT` | `8080` | HTTP port the server listens on |
-| `RYNCTL_SECRET` | `change-me` | HMAC key used to sign session cookies — **must be changed in production** |
-| `RYNCTL_ADMIN_PASSWORD` | `admin` | Initial password for the seeded `admin` user (only used when the database is first created; set a strong value before first production start) |
+| `RYNCTL_SECRET` | *(required)* | HMAC key of at least 32 characters used to sign session cookies |
+| `RYNCTL_ADMIN_PASSWORD` | *(required)* | Policy-compliant initial password for the seeded `admin` user (only used when the database is first created) |
 | `RYNCTL_SECURE_COOKIES` | `false` | Set the `Secure` flag on the session cookie — enable when serving over HTTPS |
 | `RYNCTL_DATA_DIR` | `/data` | Directory for the SQLite database and run logs. Falls back to `./data` if `/data` doesn't exist |
 | `RYNCTL_LOG_LEVEL` | `INFO` | Python log level (`DEBUG`, `INFO`, `WARNING`, `ERROR`) |
@@ -248,17 +209,16 @@ All settings are optional. Defaults are designed for a quick local start.
 | `RYNCTL_LOCKOUT_MINUTES` | `15` | Lockout duration after exceeding max login attempts |
 | `RYNCTL_RATE_LIMIT_RPM` | `120` | Maximum API requests per minute per IP |
 | `RYNCTL_BROWSE_ROOTS` | *(empty)* | Optional comma-separated local directory roots allowed for `/api/browse`; when empty, local browsing is unrestricted |
+| `RYNCTL_JOB_TIMEOUT` | `0` | Default maximum runtime for new jobs in seconds (0 = no timeout) |
 | `RYNCTL_RUN_RETENTION_DAYS` | `0` | Prune job runs and their log files older than N days (0 = keep forever) |
-| `RYNCTL_RETRY_MAX` | `0` | Default retry count for new jobs (0 = no retries) |
-| `RYNCTL_RETRY_DELAY` | `30` | Default delay in seconds between retries |
 | `RYNCTL_WEBHOOK_URL` | *(empty)* | URL to POST when a job finishes (leave empty to disable) |
 | `RYNCTL_WEBHOOK_EVENTS` | `failure` | Which events trigger the webhook: `failure`, `success`, or `all` |
 | `RYNCTL_METRICS` | `true` | Enable Prometheus metrics endpoint at `/api/metrics` |
 
 You can also place these in a `.env` file in the project root — it is loaded automatically on startup.
 
-Use `.env.example` as the starting point. Values containing `replace-with-...`
-are placeholders and are not safe for production.
+Use `.env.example` as the starting point and replace both `replace-with-...`
+placeholders before startup.
 
 ---
 
@@ -285,8 +245,9 @@ be interpreted as command-line options are rejected.
 
 Database backup downloads use SQLite's backup API to create a consistent
 snapshot. Restore uploads are size-limited, checked for a SQLite header, verified
-with `PRAGMA integrity_check`, and must include the expected Rynctl tables before
-the live database is replaced.
+with `PRAGMA integrity_check`, and must include the expected Rynctl tables. The
+live database is then replaced atomically while application database connections
+are excluded; new connections use the restored database immediately.
 
 ---
 
@@ -298,7 +259,9 @@ the live database is replaced.
 | `rsync` | Yes | Yes | Yes | No |
 | `readonly` | Yes | No | No | No |
 
-The default `admin` account is created on first run. Set `RYNCTL_ADMIN_PASSWORD` before first startup to choose a strong initial password, or change it from the Users page after logging in.
+The `admin` account is created on first run with the required
+`RYNCTL_ADMIN_PASSWORD`. The final admin cannot be demoted or deleted, and an
+admin cannot delete their own account.
 
 > **Deployment note:** the in-process job runner (a single worker thread) and the in-memory rate limiter are **per-process**. Run the app with a single Uvicorn worker. Running multiple workers would duplicate scheduled job execution and split rate-limit state across processes.
 

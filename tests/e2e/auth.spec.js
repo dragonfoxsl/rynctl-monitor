@@ -1,18 +1,18 @@
 // @ts-check
 const { test, expect } = require("@playwright/test");
-const { login, csrfHeaders } = require("./helpers");
+const { ADMIN_USERNAME, ADMIN_PASSWORD, login, csrfHeaders } = require("./helpers");
 
 test.describe("Authentication API", () => {
   test("login with valid credentials sets cookie and returns user info", async ({
     request,
   }) => {
     const res = await request.post("/api/auth/login", {
-      data: { username: "admin", password: "admin" },
+      data: { username: ADMIN_USERNAME, password: ADMIN_PASSWORD },
     });
     expect(res.ok()).toBeTruthy();
     const body = await res.json();
     expect(body).not.toHaveProperty("token");
-    expect(body.username).toBe("admin");
+    expect(body.username).toBe(ADMIN_USERNAME);
     expect(body.role).toBe("admin");
     expect(res.headers()["set-cookie"]).toContain("session_token=");
   });

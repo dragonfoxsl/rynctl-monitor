@@ -1,6 +1,6 @@
 // @ts-check
 const { test, expect } = require("@playwright/test");
-const { login } = require("./helpers");
+const { ADMIN_USERNAME, ADMIN_PASSWORD } = require("./helpers");
 const fs = require("fs");
 const path = require("path");
 
@@ -31,8 +31,8 @@ test.describe("UI smoke tests", () => {
     await page.goto("/");
 
     // Fill login form
-    await page.getByPlaceholder(/user/i).fill("admin");
-    await page.getByPlaceholder(/pass/i).fill("admin");
+    await page.getByPlaceholder(/user/i).fill(ADMIN_USERNAME);
+    await page.getByPlaceholder(/pass/i).fill(ADMIN_PASSWORD);
     await page.getByRole("button", { name: /log\s*in|sign\s*in/i }).click();
 
     // Should navigate to dashboard — look for common dashboard indicators
@@ -44,8 +44,8 @@ test.describe("UI smoke tests", () => {
   test("navigation links are present after login", async ({ page }) => {
     test.skip(!hasBuiltFrontend, "built frontend assets are required for UI smoke tests");
     await page.goto("/");
-    await page.getByPlaceholder(/user/i).fill("admin");
-    await page.getByPlaceholder(/pass/i).fill("admin");
+    await page.getByPlaceholder(/user/i).fill(ADMIN_USERNAME);
+    await page.getByPlaceholder(/pass/i).fill(ADMIN_PASSWORD);
     await page.getByRole("button", { name: /log\s*in|sign\s*in/i }).click();
 
     // Wait for app to load

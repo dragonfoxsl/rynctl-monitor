@@ -2,6 +2,7 @@
 Run history routes — recent runs across all jobs, and log retrieval.
 """
 
+import logging
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Request
@@ -10,6 +11,7 @@ from backend.database import get_db
 from backend.security import require_auth
 
 router = APIRouter(prefix="/api/runs", tags=["runs"])
+logger = logging.getLogger(__name__)
 
 
 @router.get("/recent")
@@ -51,5 +53,6 @@ async def run_log(run_id: int, request: Request):
         if len(content) > 50_000:
             content = content[-50_000:]
         return {"content": content}
-    except Exception as exc:
-        return {"content": f"Error reading log: {exc}"}
+    except Exception:
+        logger.exception("Unexpected failure reading run %d log", run_id)
+        return {"content": "Unable to read log"}
