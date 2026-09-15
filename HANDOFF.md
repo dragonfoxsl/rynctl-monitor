@@ -2,8 +2,10 @@
 
 ## Current State
 
-- Working branch: `docs/public-readme-cleanup` (the repository default is `main`)
+- Working branch: `chore/consolidate-dependency-updates` (the repository default is `main`)
 - Remote: `git@github.com:dragonfoxsl/rynctl-monitor.git`
+- This branch consolidates dependency updates from PRs #16-#18: `browserslist`
+  4.28.9, `baseline-browser-mapping` 2.11.21, and `httpx2` 2.12.0.
 - CI runs on push, pull request, manual dispatch, and Fridays at `03:00 UTC`.
 - Current CI runs backend tests, frontend build/audit, package audit, and the
   Dockerized browser/API and scheduler smoke suites. Tag builds repeat these
@@ -30,10 +32,17 @@
 - Frontend audit: `cd frontend && npm audit --audit-level=low`
 - E2E package audit: `cd tests && npm audit --audit-level=low`
 
+## Latest Verification
+
+- Consolidated dependency refresh: frontend build and audit passed; 54 backend
+  tests and 32 browser/API tests passed; scheduler proof, e2e package audit,
+  Python audit, and `git diff --check` passed.
+
 ## Open Items
 
 - Keep the scheduled-job proof check in the e2e suite when scheduler behavior changes.
 - Keep e2e workflow fixture creation after the e2e image build and use `--no-deps` for the test run.
-- Dependabot audit (2026-07-25): no open version-update PRs.
+- PRs #16-#18 are superseded by this consolidated dependency refresh. Their
+  seven open Dependabot alerts have patched versions included in this branch.
 - No `.github/dependabot.yml` is currently present; review whether scheduled
   version updates should be re-enabled before relying on Dependabot automation.
