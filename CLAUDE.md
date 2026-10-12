@@ -129,7 +129,7 @@ Exit codes: 0=success, -1=exception, -2=timeout, -3=stale/interrupted
 | `job_runs` | id, job_id, status, attempt, started/finished_at, exit_code, bytes/files_transferred, total_size, log_file, error_message |
 | `audit_log` | id, user_id, username, action, target_type/id, details, created_at |
 
-Schema auto-applied on first startup. New columns added via `ALTER TABLE IF NOT EXISTS` pattern in `database.py`. Admin user seeded if DB is empty, password from `RYNCTL_ADMIN_PASSWORD` (defaults to `admin`).
+Schema auto-applied on first startup. New columns added via `ALTER TABLE IF NOT EXISTS` pattern in `database.py`. Admin user seeded if DB is empty, password from `RYNCTL_ADMIN_PASSWORD`, which is required — there is no default.
 
 ### Roles
 
@@ -144,8 +144,8 @@ Schema auto-applied on first startup. New columns added via `ALTER TABLE IF NOT 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `RYNCTL_PORT` | `8080` | HTTP port |
-| `RYNCTL_SECRET` | `change-me` | HMAC key for signing session cookies (**change in production**) |
-| `RYNCTL_ADMIN_PASSWORD` | `admin` | Initial seeded admin password (only on first DB creation) |
+| `RYNCTL_SECRET` | **required** | HMAC key for signing session cookies. Startup fails unless it is 32+ chars and not a placeholder |
+| `RYNCTL_ADMIN_PASSWORD` | **required** | Initial seeded admin password (only on first DB creation). Startup fails unless it is 8+ chars with upper, lower, and a digit, and not a placeholder |
 | `RYNCTL_SECURE_COOKIES` | `false` | Set `Secure` flag on session cookie (enable for HTTPS) |
 | `RYNCTL_DATA_DIR` | `/data` | SQLite DB + logs directory |
 | `RYNCTL_LOG_LEVEL` | `INFO` | Python log level |
@@ -153,8 +153,6 @@ Schema auto-applied on first startup. New columns added via `ALTER TABLE IF NOT 
 | `RYNCTL_SESSION_DAYS` | `7` | Session token expiry |
 | `RYNCTL_MAX_LOGIN_ATTEMPTS` | `5` | Lockout threshold |
 | `RYNCTL_LOCKOUT_MINUTES` | `15` | Lockout duration |
-| `RYNCTL_RETRY_MAX` | `0` | Default job retry count |
-| `RYNCTL_RETRY_DELAY` | `30` | Seconds between retries |
 | `RYNCTL_JOB_TIMEOUT` | `0` | Job timeout (0=disabled) |
 | `RYNCTL_RUN_RETENTION_DAYS` | `0` | Prune job_runs + logs older than N days (0=keep forever) |
 | `RYNCTL_WEBHOOK_URL` | — | POST on job finish (empty=disabled) |
@@ -171,7 +169,7 @@ Schema auto-applied on first startup. New columns added via `ALTER TABLE IF NOT 
 - **Rate limiting**: Per-IP sliding window (60s), configurable RPM
 - **Account lockout**: 5 failed attempts → 15min lockout
 - **Path browsing**: Validated against BROWSE_ROOTS whitelist + symlink resolution
-- **Subprocess**: rsync commands built from validated job data (`ssh_port` numeric, `-e`/`--rsh`/`--rsync-path` rejected in flags), `--stats` always appended
+- **Subprocess**: rsync commands built from validated job data (`ssh_port` numeric, `-e`/`--rsh`/`--rsync-path` rejected in flags, including clustered short flags such as `-ae`), `--stats` always appended
 
 ## Key Conventions
 
