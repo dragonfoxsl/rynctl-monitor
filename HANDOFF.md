@@ -30,8 +30,18 @@
 - Frontend audit: `cd frontend && npm audit --audit-level=low`
 - E2E package audit: `cd tests && npm audit --audit-level=low`
 
+## Latest Verification
+
+- Consolidated dependency refresh: frontend build and audit passed; 54 backend
+  tests and 32 browser/API tests passed; scheduler proof, e2e package audit,
+  Python audit, and `git diff --check` passed.
+
 ## Open Items
 
 - Keep the scheduled-job proof check in the e2e suite when scheduler behavior changes.
 - Keep e2e workflow fixture creation after the e2e image build and use `--no-deps` for the test run.
 - Keep package-manager audits in CI; GitHub alert availability is not a substitute for a clean lockfile audit.
+- Dependency updates from PRs #16-#18 (`browserslist` 4.28.9,
+  `baseline-browser-mapping` 2.11.21, `httpx2` 2.12.0) landed via #19.
+- `.github/dependabot.yml` is now present with grouped weekly updates for npm
+  (`/frontend`, `/tests`), pip, and github-actions.
