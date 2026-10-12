@@ -1,3 +1,8 @@
+# PLAYWRIGHT_VERSION is the single source of truth for the Playwright image tag.
+# It is derived from tests/package.json by the Makefile and CI so the image can
+# never drift from the @playwright/test package.
+ARG PLAYWRIGHT_VERSION
+
 # Stage 1: Build frontend with Vite + Preact
 FROM node:20-slim AS frontend
 WORKDIR /build
@@ -38,7 +43,7 @@ COPY frontend/ ./
 CMD ["npm", "run", "build"]
 
 # Stage 5: Playwright test runner
-FROM mcr.microsoft.com/playwright:v1.64.0-noble AS e2e-tests
+FROM mcr.microsoft.com/playwright:v${PLAYWRIGHT_VERSION}-noble AS e2e-tests
 WORKDIR /workspace
 COPY tests/package.json ./tests/package.json
 RUN cd tests && npm install
