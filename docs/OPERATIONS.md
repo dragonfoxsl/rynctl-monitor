@@ -18,8 +18,8 @@ Rynctl Monitor beyond a local development machine.
   openssl rand -hex 32
   ```
 
-- Set `RYNCTL_ADMIN_PASSWORD` before first startup, or change the default admin
-  password immediately after the first login.
+- Set a `RYNCTL_SECRET` of at least 32 characters and an `RYNCTL_ADMIN_PASSWORD`
+  with at least eight characters, uppercase, lowercase, and a number.
 
 ## Container Hardening
 
@@ -27,7 +27,7 @@ The production container drops to the unprivileged `rynctl` user before starting
 Uvicorn. The entrypoint runs as root only long enough to create and repair
 ownership for `/data` and `/home/rynctl`.
 
-The default compose files also:
+The default Compose file also:
 
 - mount `/data` as the only persistent writable volume,
 - use a tmpfs for `/tmp`,

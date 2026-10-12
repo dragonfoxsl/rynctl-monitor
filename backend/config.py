@@ -5,6 +5,7 @@ Supports .env file loading for local development.
 
 import logging
 import os
+import re
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -24,7 +25,7 @@ if _env_file.exists():
 # Server
 # ---------------------------------------------------------------------------
 PORT = int(os.environ.get("RYNCTL_PORT", 8080))
-SECRET = os.environ.get("RYNCTL_SECRET", "change-me")
+SECRET = os.environ.get("RYNCTL_SECRET", "").strip()
 LOG_LEVEL = os.environ.get("RYNCTL_LOG_LEVEL", "INFO").upper()
 
 # ---------------------------------------------------------------------------
@@ -35,7 +36,7 @@ DATA_DIR = os.environ.get("RYNCTL_DATA_DIR", "/data")
 # ---------------------------------------------------------------------------
 # Security
 # ---------------------------------------------------------------------------
-ADMIN_PASSWORD = os.environ.get("RYNCTL_ADMIN_PASSWORD", "admin")
+ADMIN_PASSWORD = os.environ.get("RYNCTL_ADMIN_PASSWORD", "").strip()
 SESSION_EXPIRY_DAYS = int(os.environ.get("RYNCTL_SESSION_DAYS", 7))
 MAX_LOGIN_ATTEMPTS = int(os.environ.get("RYNCTL_MAX_LOGIN_ATTEMPTS", 5))
 LOCKOUT_MINUTES = int(os.environ.get("RYNCTL_LOCKOUT_MINUTES", 15))
@@ -50,10 +51,8 @@ BROWSE_ROOTS = [
 ]
 
 # ---------------------------------------------------------------------------
-# Retry & Notifications
+# Jobs & Notifications
 # ---------------------------------------------------------------------------
-RETRY_MAX = int(os.environ.get("RYNCTL_RETRY_MAX", 0))          # 0 = disabled
-RETRY_DELAY_SECS = int(os.environ.get("RYNCTL_RETRY_DELAY", 30))
 JOB_TIMEOUT_SECS = int(os.environ.get("RYNCTL_JOB_TIMEOUT", 0))  # 0 = disabled
 RUN_RETENTION_DAYS = int(os.environ.get("RYNCTL_RUN_RETENTION_DAYS", 0))  # 0 = keep forever
 WEBHOOK_URL = os.environ.get("RYNCTL_WEBHOOK_URL", "")          # POST on failure
@@ -65,10 +64,12 @@ WEBHOOK_EVENTS = os.environ.get("RYNCTL_WEBHOOK_EVENTS", "failure")  # failure,s
 METRICS_ENABLED = os.environ.get("RYNCTL_METRICS", "true").lower() in ("1", "true", "yes")
 
 # ---------------------------------------------------------------------------
-# Startup warnings for insecure defaults
+# Refuse credentials that would make a network-exposed first start unsafe.
 # ---------------------------------------------------------------------------
-if SECRET == "change-me":
-    logger.warning(
-        "RYNCTL_SECRET is set to the default value — set a strong random "
-        "secret via RYNCTL_SECRET before exposing this instance to the network"
-    )
+_PLACEHOLDERS = {"admin", "change-me", "change-me-to-a-random-secret"}
+if len(SECRET) < 32 or SECRET.lower() in _PLACEHOLDERS or SECRET.lower().startswith("replace-with-"):
+    raise RuntimeError("RYNCTL_SECRET must be at least 32 characters and not a placeholder")
+if not ADMIN_PASSWORD or ADMIN_PASSWORD.lower() in _PLACEHOLDERS or ADMIN_PASSWORD.lower().startswith("replace-with-"):
+    raise RuntimeError("RYNCTL_ADMIN_PASSWORD must be set to a non-placeholder password")
+if len(ADMIN_PASSWORD) < 8 or not all(re.search(pattern, ADMIN_PASSWORD) for pattern in (r"[A-Z]", r"[a-z]", r"[0-9]")):
+    raise RuntimeError("RYNCTL_ADMIN_PASSWORD must be at least 8 characters with upper, lower, and numeric characters")

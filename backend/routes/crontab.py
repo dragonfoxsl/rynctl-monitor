@@ -2,6 +2,7 @@
 Crontab scanner — reads the system crontab for existing rsync entries.
 """
 
+import logging
 import subprocess
 import shlex
 
@@ -13,6 +14,7 @@ from backend.security import require_auth, require_role
 from backend.validation import validate_cron_expression, validate_job_payload
 
 router = APIRouter(prefix="/api", tags=["crontab"])
+logger = logging.getLogger(__name__)
 
 
 @router.get("/crontab")
@@ -34,8 +36,9 @@ async def crontab(request: Request):
         return {"entries": entries}
     except FileNotFoundError:
         return {"entries": [], "error": "crontab not available"}
-    except Exception as exc:
-        return {"entries": [], "error": str(exc)}
+    except Exception:
+        logger.exception("Unexpected crontab scan failure")
+        return {"entries": [], "error": "Unable to scan crontab"}
 
 
 @router.post("/crontab/import")

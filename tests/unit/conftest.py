@@ -26,7 +26,8 @@ def app_ctx(monkeypatch, tmp_path):
     browse_root.mkdir(parents=True, exist_ok=True)
 
     monkeypatch.setenv("RYNCTL_DATA_DIR", str(data_dir))
-    monkeypatch.setenv("RYNCTL_SECRET", "test-secret")
+    monkeypatch.setenv("RYNCTL_SECRET", "unit-test-secret-0123456789abcdef")
+    monkeypatch.setenv("RYNCTL_ADMIN_PASSWORD", "TestAdmin123!")
     monkeypatch.setenv("RYNCTL_RATE_LIMIT_RPM", "10000")
     monkeypatch.setenv("RYNCTL_BROWSE_ROOTS", str(browse_root))
 
@@ -70,7 +71,7 @@ def job_runner_module(app_ctx):
 
 @pytest.fixture
 def auth_headers(client):
-    res = client.post("/api/auth/login", json={"username": "admin", "password": "admin"})
+    res = client.post("/api/auth/login", json={"username": "admin", "password": "TestAdmin123!"})
     assert res.status_code == 200
     csrf = client.get("/api/auth/csrf").json()["csrf_token"]
     return {"X-CSRF-Token": csrf}

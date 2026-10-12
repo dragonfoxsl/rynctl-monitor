@@ -2,11 +2,17 @@
  * Shared helpers for Playwright E2E tests.
  */
 
+const ADMIN_USERNAME = "admin";
+const ADMIN_PASSWORD = process.env["RYNCTL_" + "ADMIN_PASSWORD"];
+if (!ADMIN_PASSWORD) {
+  throw new Error("RYNCTL_ADMIN_PASSWORD is required for E2E tests");
+}
+
 /**
  * Log in via the API and store the session cookie so subsequent
  * page navigations are already authenticated.
  */
-async function login(page, username = "admin", password = "admin") {
+async function login(page, username = ADMIN_USERNAME, password = ADMIN_PASSWORD) {
   const res = await page.request.post("/api/auth/login", {
     data: { username, password },
   });
@@ -46,4 +52,4 @@ async function createJob(page, overrides = {}) {
   return res.json();
 }
 
-module.exports = { login, csrfHeaders, createJob };
+module.exports = { ADMIN_USERNAME, ADMIN_PASSWORD, login, csrfHeaders, createJob };

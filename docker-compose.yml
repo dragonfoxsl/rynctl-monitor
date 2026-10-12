@@ -17,8 +17,21 @@ services:
       # - ~/.ssh/id_rsa:/home/rynctl/.ssh/id_rsa:ro
       # - ~/.ssh/known_hosts:/home/rynctl/.ssh/known_hosts:ro
     environment:
-      - RYNCTL_PORT=8080
-      - RYNCTL_SECRET=${RYNCTL_SECRET:-change-me-to-a-random-secret}
+      RYNCTL_PORT: "8080"
+      RYNCTL_SECRET: "${RYNCTL_SECRET:-}"
+      RYNCTL_ADMIN_PASSWORD: "${RYNCTL_ADMIN_PASSWORD:-}"
+      RYNCTL_LOG_LEVEL: "${RYNCTL_LOG_LEVEL:-INFO}"
+      RYNCTL_SECURE_COOKIES: "${RYNCTL_SECURE_COOKIES:-false}"
+      RYNCTL_SESSION_DAYS: "${RYNCTL_SESSION_DAYS:-7}"
+      RYNCTL_MAX_LOGIN_ATTEMPTS: "${RYNCTL_MAX_LOGIN_ATTEMPTS:-5}"
+      RYNCTL_LOCKOUT_MINUTES: "${RYNCTL_LOCKOUT_MINUTES:-15}"
+      RYNCTL_RATE_LIMIT_RPM: "${RYNCTL_RATE_LIMIT_RPM:-120}"
+      RYNCTL_BROWSE_ROOTS: "${RYNCTL_BROWSE_ROOTS:-}"
+      RYNCTL_JOB_TIMEOUT: "${RYNCTL_JOB_TIMEOUT:-0}"
+      RYNCTL_RUN_RETENTION_DAYS: "${RYNCTL_RUN_RETENTION_DAYS:-0}"
+      RYNCTL_WEBHOOK_URL: "${RYNCTL_WEBHOOK_URL:-}"
+      RYNCTL_WEBHOOK_EVENTS: "${RYNCTL_WEBHOOK_EVENTS:-failure}"
+      RYNCTL_METRICS: "${RYNCTL_METRICS:-true}"
     read_only: true
     tmpfs:
       - /tmp
@@ -38,7 +51,8 @@ services:
       dockerfile: Dockerfile.test
       target: backend-tests
     environment:
-      - RYNCTL_SECRET=test-secret
+      - RYNCTL_SECRET=backend-test-secret-0123456789abcdef
+      - RYNCTL_ADMIN_PASSWORD=TestAdmin123!
     profiles: ["tools"]
 
   frontend-build:
@@ -64,6 +78,7 @@ services:
         condition: service_healthy
     environment:
       - BASE_URL=http://rynctl-monitor:8080
+      - RYNCTL_ADMIN_PASSWORD=${RYNCTL_ADMIN_PASSWORD:-}
     profiles: ["tools"]
 
 volumes:
