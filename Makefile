@@ -1,5 +1,10 @@
 .PHONY: up down build frontend-build backend-tests e2e-tests verify
 
+# Derived from tests/package.json so the Playwright image tag can never drift
+# from the @playwright/test package. Dockerfile.test consumes it as a build arg.
+PLAYWRIGHT_VERSION := $(shell sed -n 's/.*"@playwright\/test": *"\([^"]*\)".*/\1/p' tests/package.json)
+export PLAYWRIGHT_VERSION
+
 up:
 	docker compose up -d rynctl-monitor
 

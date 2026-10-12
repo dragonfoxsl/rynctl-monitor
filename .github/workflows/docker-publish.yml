@@ -13,7 +13,7 @@ env:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       RYNCTL_SECRET: release-ci-test-secret-0123456789abcdef
       RYNCTL_ADMIN_PASSWORD: CiTestOnly123!
@@ -35,6 +35,10 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends rsync openssh-client
       - name: Install Python deps
         run: pip install -r requirements-dev.txt
+      - name: Audit Python deps
+        run: |
+          pip install pip-audit
+          pip-audit -r requirements.txt -r requirements-dev.txt
       - name: Run backend unit tests
         run: pytest
       - name: Audit and build frontend
@@ -48,6 +52,9 @@ jobs:
         run: |
           npm ci
           npm audit --audit-level=high
+      - name: Resolve Playwright version from tests/package.json
+        run: |
+          echo "PLAYWRIGHT_VERSION=$(sed -n 's/.*"@playwright\/test": *"\([^"]*\)".*/\1/p' tests/package.json)" >> "$GITHUB_ENV"
       - name: Run browser + API suite in Docker
         run: |
           docker compose up -d --wait rynctl-monitor
@@ -61,7 +68,7 @@ jobs:
 
   build-and-push:
     needs: test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       packages: write

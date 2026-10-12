@@ -5,9 +5,15 @@
 - Default branch: `main`
 - Remote: `git@github.com:dragonfoxsl/rynctl-monitor.git`
 - CI runs on push, pull request, manual dispatch, and Fridays at `03:00 UTC`.
-- Current CI runs backend tests, frontend build/audit, package audit, and the
-  Dockerized browser/API and scheduler smoke suites. Tag builds repeat these
-  gates before publishing an image.
+- Current CI runs backend tests, frontend build/audit, package audit, Python
+  audit (`pip-audit`), and the Dockerized browser/API and scheduler smoke
+  suites. Tag builds repeat these gates before publishing an image.
+- Runners are pinned to `ubuntu-24.04`; `ubuntu-latest` migrates to Ubuntu 26
+  from 2026-10-19, so bump this deliberately after testing the Docker e2e job.
+- The Playwright image tag is derived from `@playwright/test` in
+  `tests/package.json` via the `PLAYWRIGHT_VERSION` build arg. Never hardcode a
+  version in `Dockerfile.test`; run the e2e suite through `make e2e-tests` or
+  export `PLAYWRIGHT_VERSION` first.
 
 ## Maintainer Rules
 
@@ -32,9 +38,9 @@
 
 ## Latest Verification
 
-- Consolidated dependency refresh: frontend build and audit passed; 54 backend
-  tests and 32 browser/API tests passed; scheduler proof, e2e package audit,
-  Python audit, and `git diff --check` passed.
+- CI hardening and Playwright single-sourcing: 69 backend tests passed;
+  `pip-audit` clean; frontend and e2e package audits clean; the e2e image built
+  from the derived `PLAYWRIGHT_VERSION` and reported Playwright 1.64.0.
 
 ## Open Items
 
@@ -43,5 +49,8 @@
 - Keep package-manager audits in CI; GitHub alert availability is not a substitute for a clean lockfile audit.
 - Dependency updates from PRs #16-#18 (`browserslist` 4.28.9,
   `baseline-browser-mapping` 2.11.21, `httpx2` 2.12.0) landed via #19.
-- `.github/dependabot.yml` is now present with grouped weekly updates for npm
+- `.github/dependabot.yml` is present with grouped weekly updates for npm
   (`/frontend`, `/tests`), pip, and github-actions.
+- Dependabot owns `tests/package.json` but not `Dockerfile.test`. The
+  `PLAYWRIGHT_VERSION` build arg removes that coupling; a Playwright bump needs
+  no Dockerfile change.

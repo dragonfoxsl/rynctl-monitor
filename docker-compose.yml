@@ -73,6 +73,8 @@ services:
       context: .
       dockerfile: Dockerfile.test
       target: e2e-tests
+      args:
+        PLAYWRIGHT_VERSION: ${PLAYWRIGHT_VERSION:?use 'make e2e-tests', which reads tests/package.json}
     depends_on:
       rynctl-monitor:
         condition: service_healthy
